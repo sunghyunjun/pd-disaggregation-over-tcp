@@ -12,8 +12,8 @@ bench(){ # stage config net workload rate extra...
 }
 bash harness/env_snapshot.sh results/env_A.json >/dev/null 2>&1
 
-log "A1 serve main model $MAIN (chunk 2048, prefix on)"
-CHUNK=2048 PREFIX=on harness/serve.sh "$MAIN" || { log "main model failed; falling back to RedHatAI/gemma-4-12B-it-FP8-Dynamic"; MAIN=RedHatAI/gemma-4-12B-it-FP8-Dynamic; CHUNK=2048 PREFIX=on harness/serve.sh "$MAIN" || exit 1; }
+log "A1 serve main model $MAIN (chunk 2560: Gemma 4 mm item 2496 > 2048 rejected by vLLM, prefix on)"
+CHUNK=2560 PREFIX=on harness/serve.sh "$MAIN" || { log "main model failed; falling back to RedHatAI/gemma-4-12B-it-FP8-Dynamic"; MAIN=RedHatAI/gemma-4-12B-it-FP8-Dynamic; CHUNK=2560 PREFIX=on harness/serve.sh "$MAIN" || exit 1; }
 harness/kvinfo.sh | tee results/kvinfo_A_main.txt
 export MODEL=$MAIN
 
@@ -22,23 +22,23 @@ NUM_PROMPTS=8 bench A B1 N0 random inf --max-concurrency 1 --random-input-len 10
 STEP=$(python3 harness/analyze.py $(ls -td results/*_A_B1_N0_random_rinf | head -1)/bench.json | tail -1 | cut -f9)   # tbt_p50_ms
 log "single step ms = $STEP"; echo "$STEP" > results/step_A_main.txt
 
-log "A3 ShareGPT sweep, chunk 2048"
-for r in 0.5 1 2 4 6 8; do log " rate $r"; bench A B1c2k N0 sharegpt $r; done
+log "A3 ShareGPT sweep, chunk 2560"
+for r in 0.5 1 2 4 6 8; do log " rate $r"; bench A B1c2k5 N0 sharegpt $r; done
 log "A3b max throughput reference"
-NUM_PROMPTS=300 bench A B1c2k N0 sharegpt inf
+NUM_PROMPTS=300 bench A B1c2k5 N0 sharegpt inf
 
 log "A4 ShareGPT sweep, chunk 8192"
 CHUNK=8192 PREFIX=on harness/serve.sh "$MAIN" && for r in 0.5 1 2 4 6 8; do log " rate $r"; bench A B1c8k N0 sharegpt $r; done
 
-log "A5 synthetic partial, chunk 2048, prefix off"
-CHUNK=2048 PREFIX=off harness/serve.sh "$MAIN" && for L in 4096 16384; do for r in 0.25 0.5 1; do log " L=$L rate $r"; bench A B1c2k N0 random $r --random-input-len $L --random-output-len 512; done; done
+log "A5 synthetic partial, chunk 2560, prefix off"
+CHUNK=2560 PREFIX=off harness/serve.sh "$MAIN" && for L in 4096 16384; do for r in 0.25 0.5 1; do log " L=$L rate $r"; bench A B1c2k5 N0 random $r --random-input-len $L --random-output-len 512; done; done
 
 log "A6 Azure-conv replay (2x slower, first 600 req), prefix on"
-CHUNK=2048 PREFIX=on harness/serve.sh "$MAIN" && TRACE_SEC_MULT=0.002 NUM_PROMPTS=600 bench A B1c2k N0 azure_conv self
+CHUNK=2560 PREFIX=on harness/serve.sh "$MAIN" && TRACE_SEC_MULT=0.002 NUM_PROMPTS=600 bench A B1c2k5 N0 azure_conv self
 
 log "A7 other models: kvinfo + single step"
 for m in google/gemma-4-12B-it RedHatAI/gemma-4-12B-it-FP8-Dynamic Qwen/Qwen3-8B; do
-  log " $m"; CHUNK=2048 PREFIX=on harness/serve.sh "$m" || continue
+  log " $m"; CHUNK=2560 PREFIX=on harness/serve.sh "$m" || continue
   harness/kvinfo.sh | tee -a results/kvinfo_A_others.txt | sed "s|^|$m |"
   MODEL=$m NUM_PROMPTS=8 bench A B1 N0 random inf --max-concurrency 1 --random-input-len 1024 --random-output-len 512 --ignore-eos
 done
