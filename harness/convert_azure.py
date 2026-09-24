@@ -3,7 +3,7 @@
 jsonl format that `vllm bench serve --dataset-name timed_trace` replays.
 
 Input : AzureLLMInferenceTrace_{code,conv}.csv  (TIMESTAMP, ContextTokens, GeneratedTokens)
-Output: jsonl with {"timestamp": <ms since first request>, "input_length", "output_length", "hash_ids": []}
+Output: jsonl with {"timestamp": <ms since first request>, "input_length", "output_length", "hash_ids": [unique ids, one per 16-token chunk]}
 
 Options let you take a time window and clamp lengths so the trace fits a 24 GB GPU.
 """
@@ -25,6 +25,7 @@ def main():
     ap.add_argument("--max-input", type=int, default=None, help="drop requests with ContextTokens above this")
     ap.add_argument("--max-output", type=int, default=None, help="clamp GeneratedTokens to this")
     ap.add_argument("--min-output", type=int, default=1)
+    ap.add_argument("--chunk", type=int, default=16, help="hash chunk size; must match --timed-trace-chunk-hash-size (default 16). timed_trace builds the prompt ONLY from hash_ids, so every request needs ceil(input/chunk) ids")
     args = ap.parse_args()
 
     rows = []
@@ -34,6 +35,7 @@ def main():
     rows.sort(key=lambda x: x[0])
     t0 = rows[0][0]
     kept, dropped = 0, 0
+    next_id = 0   # unique ids -> no shared prefixes (Azure traces carry no prefix info)
     in_lens, out_lens = [], []
     with open(args.out, "w") as w:
         for ts, ctx, gen in rows:
@@ -45,8 +47,10 @@ def main():
             if args.max_input is not None and ctx > args.max_input:
                 dropped += 1; continue
             gen = max(args.min_output, gen if args.max_output is None else min(gen, args.max_output))
+            n_chunks = max(1, -(-ctx // args.chunk))
             rec = {"timestamp": int(round((rel - args.start_sec) * 1000)),
-                   "input_length": ctx, "output_length": gen, "hash_ids": []}
+                   "input_length": ctx, "output_length": gen, "hash_ids": list(range(next_id, next_id + n_chunks))}
+            next_id += n_chunks
             w.write(json.dumps(rec) + "\n")
             kept += 1; in_lens.append(ctx); out_lens.append(gen)
     def q(xs, p):
