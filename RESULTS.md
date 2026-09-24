@@ -53,3 +53,19 @@ KV 전송(디코드 로그, 1024토큰 = 112 MB/요청 = 112 KB/tok · Qwen3-1.7
 | Gemma 4 31B NVFP4 (nvidia) | O (`/root/.cache/vllm` 마운트 필요, 마찰 #2). **NixlConnector producer로도 기동 O** (Registering KV_Caches, LBHNC) | 96.7 s, 디스크 32.7 GB | 209,266 | 6.39 | **25.1** (p99 25.5) | 109 | Available KV cache memory 50.43 GiB → **258.8 KB/tok (vLLM 계정 기준)**; config 계산값 320은 슬라이딩층 계정 방식 차이로 재검토. 채팅형 TBT SLO = 125 ms, 문서형 = 630 ms |
 | Gemma 4 26B-A4B BF16 (google) | O | 155 s, 디스크 51.6 GB | 280,936 | 8.57 | **7.7** (p99 8.0) | 60 | Available KV 33.85 GiB → **129.4 KB/tok (vLLM 계정)**; config 전역층만 계산 80. 채팅형 TBT SLO = 38 ms, 문서형 = 192 ms. 출력 119 tok/s(conc 1) |
 | Qwen3.6-35B-A3B FP8 (Qwen, hybrid GDN+attn) | O (mamba page 패딩 0.76%, GDN Triton 워밍업) | 디스크 ~35 GB | **2,031,616** | **62.0** | **5.7** (p99 6.0) | 87 | Available KV 47.47 GiB → **24.5 KB/tok (vLLM 계정)**. 32K 요청 62개 동시. 출력 164 tok/s(conc 1). PD 최선 후보 |
+
+### 커넥터 기동 확인 (NixlConnector kv_producer, UCX tcp,cuda_copy,cuda_ipc)
+| 모델 | 결과 |
+|---|---|
+| Gemma 4 31B NVFP4 (슬라이딩 50 + 전역 10) | O. `Registering KV_Caches`, 레이아웃 LBHNC |
+| Gemma 4 26B-A4B BF16 (슬라이딩 25 + 전역 5, MoE) | O |
+| Qwen3.6-35B-A3B FP8 (GDN 30 + 전역 10, MoE) | 1차 X: `AssertionError: 3-read Mamba conv transfer requires DS conv state layout. Set VLLM_SSM_CONV_STATE_LAYOUT=DS` → **`VLLM_SSM_CONV_STATE_LAYOUT=DS`로 O**. `Hybrid SSM registration: num_blocks=2356, num_regions=10, mamba_ssm_size=...` |
+
+→ 열린 질문 1(슬라이딩 층 전송)·12(hybrid recurrent state)는 **기동 수준에서 해결**. 실제 전송 정확성은 세션 B·C에서 2노드로 확인.
+
+### A′ 결론
+- 세 모델 모두 g7e 96 GB에 32K 컨텍스트로 기동. 단일 스텝: 31B NVFP4 25 ms, 26B-A4B BF16 7.7 ms, 35B-A3B FP8 5.7 ms.
+- KV/tok(vLLM 계정): 259 / 129 / 24.5 KB → 32K 동시 6.4 / 8.6 / 62. KV 용량 축의 범위가 10배 이상 확인됨.
+- 디스크: 3모델로 194 GB 소진 → 세션 C는 루트 400 GB. hf CLI는 `hub/blobs` 공용 저장이라 부분 다운로드 삭제 시 고아 blob 정리 필요(스크립트화).
+- 31B BF16(62 GB)은 디스크 부족으로 미실행 → 세션 C 첫 항목.
+- 소요 약 55분, 비용 약 $3.
