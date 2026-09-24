@@ -51,7 +51,7 @@ variable "auto_shutdown_hours" {
 }
 variable "volume_size_gb" {
   type    = number
-  default = 200
+  default = 400 # A′: 3 models filled 194 GB; 31B BF16 (62 GB) needs more
 }
 variable "vllm_image" {
   type    = string

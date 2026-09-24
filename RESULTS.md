@@ -44,8 +44,11 @@ KV 전송(디코드 로그, 1024토큰 = 112 MB/요청 = 112 KB/tok · Qwen3-1.7
 - 소요: 인스턴스 2대 × 약 25분. 비용 약 $1.
 
 
-## A′ · g7e.2xlarge ×1 큰 모델 기동 검증 (2026-09-24, RTX PRO 6000 96 GB, driver 580.126, vLLM v0.30.0)
+## A′ · g7e.2xlarge ×1 큰 모델 기동 검증
+
+메모: KB/tok은 vLLM의 `Available KV cache memory ÷ GPU KV cache size(tokens)`. 하이브리드(슬라이딩·선형) 모델은 vLLM이 그룹별로 블록을 나눠 잡기 때문에 config에서 전역층만 센 값과 다르다. **전송 바이트는 이 값이 아니라 커넥터가 실제로 옮기는 블록 수로 잰다(세션 B·C)**. (2026-09-24, RTX PRO 6000 96 GB, driver 580.126, vLLM v0.30.0)
 
 | 모델 · 정밀도 | 기동 | 가중치 로드 | KV 캐시 토큰 | 32K 동시 | 단일 스텝 ms (1K in / 256 out, conc 1) | TTFT p50 ms (1K) | 비고 |
 |---|---|---|---|---|---|---|---|
 | Gemma 4 31B NVFP4 (nvidia) | O (`/root/.cache/vllm` 마운트 필요, 마찰 #2). **NixlConnector producer로도 기동 O** (Registering KV_Caches, LBHNC) | 96.7 s, 디스크 32.7 GB | 209,266 | 6.39 | **25.1** (p99 25.5) | 109 | Available KV cache memory 50.43 GiB → **258.8 KB/tok (vLLM 계정 기준)**; config 계산값 320은 슬라이딩층 계정 방식 차이로 재검토. 채팅형 TBT SLO = 125 ms, 문서형 = 630 ms |
+| Gemma 4 26B-A4B BF16 (google) | O | 155 s, 디스크 51.6 GB | 280,936 | 8.57 | **7.7** (p99 8.0) | 60 | Available KV 33.85 GiB → **129.4 KB/tok (vLLM 계정)**; config 전역층만 계산 80. 채팅형 TBT SLO = 38 ms, 문서형 = 192 ms. 출력 119 tok/s(conc 1) |
