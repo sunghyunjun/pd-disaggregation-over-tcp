@@ -17,7 +17,7 @@
 |---|---|
 | 공식 이미지에 NIXL 포함 | O (nixl 1.4.1, INSTALL_KV_CONNECTORS=true 빌드) |
 | 호스트에 toy proxy 의존성(fastapi·httpx·uvicorn) | X → `pip3 install --user` 필요 (user-data에 추가) |
-| P1 producer/consumer 기동 | (대기) |
+| P1 producer/consumer 기동 | 1차 실패: `UCX_TLS=tcp`만 주면 `ucx_utils.cpp:582 VRAM memory is detected as host by UCX` → `nixl_agent registerMem failed`. **`UCX_TLS=tcp,cuda_copy,cuda_ipc`로 해결 시도** (로그 `results/P/P_fail_*_ucx_tcp_only.log`) |
 | 요청 1개 왕복 | (대기) |
 | run_bench.sh 전체 경로 | (대기) |
 | B2 라운드로빈 경로 | (대기) |
