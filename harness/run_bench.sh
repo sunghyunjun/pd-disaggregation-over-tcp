@@ -53,7 +53,7 @@ bench = json.load(open(os.path.join(out, "bench.json")))
 env = json.load(open(os.environ["ENV_JSON"])) if os.environ.get("ENV_JSON") and os.path.exists(os.environ["ENV_JSON"]) else {}
 meta = {"run_id": run_id, "stage": stage, "config": config, "network": net, "workload": wl, "rate": rate,
         "seed": os.environ.get("SEED", "0"), "point_sec": os.environ.get("POINT_SEC", "180"),
-        "vllm_flags": os.environ.get("VLLM_FLAGS", ""), "env": env, "discarded": False, "discard_reason": ""}
+        "vllm_flags": os.environ.get("VLLM_FLAGS", ""), "chunk": os.environ.get("CHUNK", ""), "prefix_caching": os.environ.get("PREFIX", ""), "model": os.environ.get("MODEL", ""), "env": env, "discarded": False, "discard_reason": ""}
 json.dump({"meta": meta, "bench": bench}, open(os.path.join(out, "result.json"), "w"))
 print("wrote", os.path.join(out, "result.json"))
 PY

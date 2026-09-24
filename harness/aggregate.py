@@ -19,7 +19,7 @@ def main():
         except Exception as e: print("skip",rj,e); continue
         meta=r.get("meta",{}); env=meta.get("env",{}) or {}; b=r.get("bench",{})
         row={"run_id":meta.get("run_id"),"stage":meta.get("stage"),"config":meta.get("config"),"network":meta.get("network"),
-             "workload":meta.get("workload"),"rate":meta.get("rate"),"model":b.get("model_id"),"chunk":os.environ.get("CHUNK",""),
+             "workload":meta.get("workload"),"rate":meta.get("rate"),"model":b.get("model_id") or meta.get("model"),"chunk":meta.get("chunk"),"prefix_caching":meta.get("prefix_caching"),
              "instance_type":env.get("instance_type"),"az":env.get("az"),"vllm":env.get("vllm_version"),
              "iperf_p1_gbps":env.get("iperf_p1_gbps"),"iperf_p4_gbps":env.get("iperf_p4_gbps"),"ping_ms":env.get("ping_avg_ms"),
              "num_prompts":b.get("num_prompts"),"request_rate":b.get("request_rate"),"max_concurrency":b.get("max_concurrency"),
