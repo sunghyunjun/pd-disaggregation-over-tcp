@@ -70,11 +70,14 @@ KV 전송(디코드 로그, 1024토큰 = 112 MB/요청 = 112 KB/tok · Qwen3-1.7
 - 31B BF16(62 GB)은 디스크 부족으로 미실행 → 세션 C 첫 항목.
 - 소요 약 55분, 비용 약 $3.
 
-## A · g7.2xlarge ×1 (2026-09-24, RTX PRO 4500 32 GB, vLLM v0.30.0) — 진행 중, 스크립트 `configs/run_A.sh`
+## A · g7.2xlarge ×1 (2026-09-24 14:24~16:50 UTC, RTX PRO 4500 32 GB, vLLM v0.30.0) — 완료, 스크립트 `configs/run_A.sh`. 비용 ≈ $6.3
 
 | 모델 · 정밀도 | 청크 | KV 캐시 토큰 | KB/tok (vLLM 계정) | 32K 동시 | 단일 스텝 ms | TTFT p50 ms (1K) | 비고 |
 |---|---|---|---|---|---|---|---|
 | Gemma 4 26B-A4B NVFP4 (nvidia) | 2560 | 317,268 | 28.8 (avail 8.71 GiB) | 9.7 | **10.0** (p99 10.3) | 72 | 청크 2048은 mm 검사로 거부(마찰 #4). 채팅형 TBT SLO 50 ms, 문서형 250 ms. 출력 96 tok/s(conc 1) |
+| Gemma 4 12B BF16 (google) | 2560 | 55,048 | 76.2 (avail 4.0 GiB) | 1.7 | (rinf 결과 참조) | | 24 GB 가중치 → KV 4 GiB. 32K 1개+ |
+| Gemma 4 12B FP8-Dynamic (RedHatAI) | 2560 | 194,402 | 76.2 (avail 14.1 GiB) | 5.9 | (rinf) | | 같은 모델 FP8: KV 3.5배 |
+| Qwen3-8B BF16 | 2560 | 72,224 | 144.0 (avail 9.9 GiB) | 2.2 | (rinf) | | config 계산 144 KB/tok과 정확히 일치(classic GQA) |
 
 ### A3/A4 · ShareGPT 요청률 스윕, B1 단일 노드 (Gemma 4 26B-A4B NVFP4, g7.2xlarge). SLO: 채팅형 TTFT p ≤ 1000 ms & 요청별 TBT max ≤ 50 ms(5×스텝), 문서형 3000 / 250
 청크 2560:
@@ -110,3 +113,12 @@ KV 전송(디코드 로그, 1024토큰 = 112 MB/요청 = 112 KB/tok · Qwen3-1.7
 - 시스템 TBT p99는 4K/0.5에서 이미 120 ms(채팅형 상한 50 ms의 2.4배). 채팅형 달성률은 4K/0.25에서 0.22로 붕괴. 문서형(250 ms)은 4K에서 유지, 16K에서 0.34 → 0.
 - 16K는 1 req/s에서 포화(TTFT 60 s). 이 GPU에서 16K 프리필 ≈ 1.4 s → 프리필만으로 최대 ≈ 0.7 req/s.
 - 이것이 PD 분리가 사려는 것(디코드 안정성)의 정확한 크기. 세션 B에서 P1이 이 멈춤을 없애는 대가로 TTFT에 얼마를 지불하는지 잰다.
+
+### A6 · Azure-conv 재생: 실패 (마찰 #5)
+`--dataset-name timed_trace`로 보낸 요청이 전부 `400 Bad Request`. 같은 서버에 curl로 토큰 ID 리스트 프롬프트(`"prompt":[1000,...]`, `ignore_eos`)를 직접 보내면 정상 → timed_trace가 만드는 요청 본문의 다른 필드가 원인. 다음 세션에서 디버그 프록시로 본문을 잡아 확인. Azure·Mooncake 재생은 그때까지 보류.
+
+### 세션 A 결론
+- 주 모델 26B-A4B NVFP4의 g7 단일 노드 B1 곡선 확보(ShareGPT 청크 2값, 합성 4K/16K). 지원 부하 채팅형 2 req/s.
+- **C1(꼬리 간섭) 증거 확보**: 짧은 입력에서는 없음(멈춤 0), 4K 입력부터 요청의 78~99%가 5배 넘는 멈춤. 세션 B의 P1 비교 대상이 명확해짐.
+- 청크 크기(2560 vs 8192)는 ShareGPT에서 무효. 긴 입력에서의 청크 효과는 미측정(다음).
+- 12B BF16/FP8, Qwen3-8B의 KV·스텝 실측. 마찰 #4(mm 청크 검사), #5(timed_trace 400).
