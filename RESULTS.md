@@ -203,3 +203,5 @@ BF16: 단일 스텝 44.8 ms(NVFP4 25.1), KV 24.55 GiB / 111,737 tok = 230 KB/tok
 | 4 | 37 | 47 | 12.1 | 15.9 | 0 | 835 | 1.0 | 1.0 |
 | 8 | 39 | 47 | 13.2 | 20.6 | 0 | 1552 | 0.99 | 1.0 |
 → ShareGPT 8 req/s까지 사실상 무손실. 이 GPU에서 8B dense는 포화 근처도 아님(스윕 상한 확장 필요). 세대 앵커로서 g7(RTX PRO 4500)의 같은 모델 스텝 비교는 A 세션 rinf 값과 대조(추후 표).
+
+### KV fp8 on/off (26B-A4B NVFP4): **차이 없음 — nvidia NVFP4 체크포인트는 이미 FP8 KV(hf_quant_config의 kv_cache_quant_algo)라 `--kv-cache-dtype fp8`가 no-op.** kvinfo 동일(28.8 KB/tok, 2,388,319 tok), 스윕 수치 ±1% 이내. BF16 KV와의 비교는 BF16 가중치 모델(57.6 KB/tok)에 `--kv-cache-dtype fp8`을 켜는 쪽으로 해야 함(세션 C 과제). 31B NVFP4의 kvfp8 재실행은 같은 이유로 중단.
