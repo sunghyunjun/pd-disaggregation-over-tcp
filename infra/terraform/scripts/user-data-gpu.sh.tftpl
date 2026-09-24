@@ -2,12 +2,12 @@
 set -eux
 export DEBIAN_FRONTEND=noninteractive
 apt-get update && apt-get install -y iperf3 jq sysstat at git python3-pip
-pip3 install --quiet aiohttp || true
+# iperf3 server first, so the env snapshot works while the image is still pulling (session P)
+nohup iperf3 -s -D >/dev/null 2>&1 || true
+sudo -u ubuntu pip3 install --quiet --user aiohttp fastapi uvicorn httpx || true   # rr_proxy.py / toy_proxy_server.py deps (session P)
 # DLAMI has docker + nvidia-container-toolkit. Pull the pinned vLLM image now so the session doesn't wait.
 sudo -u ubuntu docker pull "${vllm_image}" || true
 # optional weights sync (needs instance role or credentials; skipped when empty)
 if [ -n "${s3_weights_uri}" ]; then mkdir -p /models && chown ubuntu /models && sudo -u ubuntu aws s3 sync "${s3_weights_uri}" /models --no-progress || true; fi
-# iperf3 server for the harness env snapshot
-nohup iperf3 -s -D >/dev/null 2>&1 || true
 echo "sudo shutdown -h now" | at now + ${hours} hours
 echo "role=${role} done $(date -u)" > /var/log/user-data.log

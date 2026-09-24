@@ -1,5 +1,7 @@
 # 세션 P · 2노드 배관 (g5.xlarge ×2, 8 vCPU 쿼타) · 1h · 약 $2
 
+> **2026-09-24 완료.** 결과는 RESULTS.md §P. 아래 시트에서 바뀐 것: `UCX_TLS=tcp,cuda_copy,cuda_ipc`, 프록시 의존성은 user-data가 설치, `RESULTS_DIR`(호스트)와 `RESULTS_DIR_IN_CONTAINER=/pd/results` 분리, 프록시는 `setsid nohup ... < /dev/null & disown`.
+
 목적: P1(prefill→decode, NixlConnector over TCP)이 노드 간에 끝까지 도는지, 하네스 전체 경로(run_bench.sh → result.json)가 동작하는지, B2 라운드로빈 경로가 동작하는지. **숫자는 참고만**(GPU 작고 네트워크 burst 타입).
 모델: `Qwen/Qwen3-1.7B`(BF16 3.4 GB, 토큰 불필요). 이미지: `vllm/vllm-openai:v0.30.0`(kv_connectors 요구사항에 nixl==1.4.1 포함 — 1단계에서 확인).
 

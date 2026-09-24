@@ -46,7 +46,7 @@ def analyze(path, slos, tbt_stat):
     per_req_q = [req_stat(l, tbt_stat) for l in itls]
     ratios = [ (max(l)/st.median(l)) if len(l) >= 2 and st.median(l) > 0 else float("nan") for l in itls ]
     row = {
-        "file": os.path.basename(path),
+        "file": os.path.basename(os.path.dirname(os.path.abspath(path))) or os.path.basename(path),
         "request_rate": r.get("request_rate"), "max_concurrency": r.get("max_concurrency"),
         "duration_s": round(dur, 1), "completed": r.get("completed"), "failed": r.get("failed"),
         "ttft_p50_ms": round(quantile(ttfts, .5)*1000, 1), "ttft_p90_ms": round(quantile(ttfts, .9)*1000, 1), "ttft_p99_ms": round(quantile(ttfts, .99)*1000, 1),
