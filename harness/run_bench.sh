@@ -26,6 +26,8 @@ case "$WL" in
 esac
 if [[ "$RATE" == "self" ]]; then
   LOAD=(--num-prompts "${NUM_PROMPTS:-0}")           # self-timed: trace timestamps drive arrivals; 0 = all
+elif [[ "$RATE" == "inf" ]]; then
+  LOAD=(--request-rate inf --num-prompts "${NUM_PROMPTS:-100}")   # closed-loop / max-throughput reference; pass --max-concurrency via extra args
 else
   NP=$(python3 -c "import math;print(max(${MIN_PROMPTS}, math.ceil(${RATE}*${POINT_SEC})))")
   LOAD=(--request-rate "$RATE" --burstiness 1.0 --num-prompts "$NP")
