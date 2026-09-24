@@ -48,4 +48,4 @@ KV 전송(디코드 로그, 1024토큰 = 112 MB/요청 = 112 KB/tok · Qwen3-1.7
 
 | 모델 · 정밀도 | 기동 | 가중치 로드 | KV 캐시 토큰 | 32K 동시 | 단일 스텝 ms (1K in / 256 out, conc 1) | TTFT p50 ms (1K) | 비고 |
 |---|---|---|---|---|---|---|---|
-| Gemma 4 31B NVFP4 (nvidia) | O (`/root/.cache/vllm` 마운트 필요, 마찰 #2) | 96.7 s | 209,266 | 6.39 | **25.1** (p99 25.5) | 109 | 예상 KV 320 KB/tok과 일치(≈67 GB / 209K). 채팅형 TBT SLO = 125 ms, 문서형 = 630 ms |
+| Gemma 4 31B NVFP4 (nvidia) | O (`/root/.cache/vllm` 마운트 필요, 마찰 #2). **NixlConnector producer로도 기동 O** (Registering KV_Caches, LBHNC) | 96.7 s, 디스크 32.7 GB | 209,266 | 6.39 | **25.1** (p99 25.5) | 109 | Available KV cache memory 50.43 GiB → **258.8 KB/tok (vLLM 계정 기준)**; config 계산값 320은 슬라이딩층 계정 방식 차이로 재검토. 채팅형 TBT SLO = 125 ms, 문서형 = 630 ms |
