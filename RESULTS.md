@@ -205,3 +205,10 @@ BF16: 단일 스텝 44.8 ms(NVFP4 25.1), KV 24.55 GiB / 111,737 tok = 230 KB/tok
 → ShareGPT 8 req/s까지 사실상 무손실. 이 GPU에서 8B dense는 포화 근처도 아님(스윕 상한 확장 필요). 세대 앵커로서 g7(RTX PRO 4500)의 같은 모델 스텝 비교는 A 세션 rinf 값과 대조(추후 표).
 
 ### KV fp8 on/off (26B-A4B NVFP4): **차이 없음 — nvidia NVFP4 체크포인트는 이미 FP8 KV(hf_quant_config의 kv_cache_quant_algo)라 `--kv-cache-dtype fp8`가 no-op.** kvinfo 동일(28.8 KB/tok, 2,388,319 tok), 스윕 수치 ±1% 이내. BF16 KV와의 비교는 BF16 가중치 모델(57.6 KB/tok)에 `--kv-cache-dtype fp8`을 켜는 쪽으로 해야 함(세션 C 과제). 31B NVFP4의 kvfp8 재실행은 같은 이유로 중단.
+
+### Azure LLM 트레이스(conv) 재생, B1 g7e 26B-A4B NVFP4 (timed_trace, 시간 배율 0.002 = 2배 느리게, 첫 600요청 = 300 s, 실효 2.0 req/s)
+입력 p50/p90/max 996/1,314/4,107 tok, 출력 p50/p90 217/429.
+| TTFT p50 | TTFT p90 | TBT p50 | TBT p99 | 멈춤 요청 비율 | 출력 tok/s | 절대 50 ms 달성률 | 문서 250 |
+|---|---|---|---|---|---|---|---|
+| 45 | 65 | 8.8 | 27.9 | 0.17 | 524 | 0.96 | 1.0 |
+→ 실제 트레이스 재생 경로 확보(마찰 #5 해결). 2 req/s에서 SLO 안. 멈춤 17%는 4K급 입력 요청이 만드는 것(합성 4K 결과와 일치). 실시간(배율 0.001, 5.5 req/s)은 세션 B에서.
