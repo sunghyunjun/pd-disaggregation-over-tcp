@@ -21,6 +21,13 @@ one_model(){ # tag model [extra serve args]
   NUM_PROMPTS=8 bench C1 B1_$tag N0 random inf --max-concurrency 1 --random-input-len 1024 --random-output-len 512 --ignore-eos
   for r in $RATES; do log "   $tag sharegpt rate $r"; bench C1 B1_$tag N0 sharegpt $r; done
 }
+log "== timed_trace 400 debug (5 req via dump proxy)"
+CHUNK=2560 PREFIX=on harness/serve.sh nvidia/Gemma-4-26B-A4B-NVFP4 && {
+  setsid nohup python3 harness/dump_proxy.py --port 8001 --upstream http://127.0.0.1:8000 --log results/timed_trace_dump.log --n 2 > /dev/null 2>&1 < /dev/null & disown; sleep 2
+  MODEL=nvidia/Gemma-4-26B-A4B-NVFP4 BASE_URL=http://127.0.0.1:8001 TRACE_SEC_MULT=0.002 NUM_PROMPTS=5 bench C1 dbg N0 azure_conv self
+  pkill -f "dump_prox[y]"; head -c 2500 results/timed_trace_dump.log
+}
+
 one_model g31_nvfp4  nvidia/Gemma-4-31B-IT-NVFP4
 one_model g26_bf16   google/gemma-4-26B-A4B-it
 one_model g26_nvfp4  nvidia/Gemma-4-26B-A4B-NVFP4
