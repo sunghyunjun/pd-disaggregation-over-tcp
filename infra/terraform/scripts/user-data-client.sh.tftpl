@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eux
+export DEBIAN_FRONTEND=noninteractive
+apt-get update && apt-get install -y iperf3 jq sysstat at git python3-pip python3-venv
+sudo -u ubuntu python3 -m venv /home/ubuntu/venv
+sudo -u ubuntu /home/ubuntu/venv/bin/pip install --quiet aiohttp "vllm[bench]" 2>/dev/null || sudo -u ubuntu /home/ubuntu/venv/bin/pip install --quiet aiohttp vllm || true
+echo "sudo shutdown -h now" | at now + ${hours} hours
+echo "client done $(date -u)" > /var/log/user-data.log

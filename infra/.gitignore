@@ -1,0 +1,4 @@
+terraform/.terraform/
+terraform/*.tfstate*
+terraform/.terraform.lock.hcl
+last-outputs.json
