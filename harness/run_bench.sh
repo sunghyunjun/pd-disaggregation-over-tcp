@@ -9,9 +9,12 @@
 set -euo pipefail
 STAGE=$1; CONFIG=$2; NET=$3; WL=$4; RATE=$5; shift 5
 MODEL=${MODEL:?}; BASE_URL=${BASE_URL:-http://127.0.0.1:8000}; RESULTS_DIR=${RESULTS_DIR:-results}
+# When `vllm` is the docker wrapper, the container sees ~/pd at /pd. RESULTS_DIR is the HOST path; the
+# container-side path for --result-dir is derived via RESULTS_DIR_IN_CONTAINER (default: same as host).
+RESULTS_DIR_IN_CONTAINER=${RESULTS_DIR_IN_CONTAINER:-$RESULTS_DIR}
 SEED=${SEED:-0}; POINT_SEC=${POINT_SEC:-180}; MIN_PROMPTS=${MIN_PROMPTS:-100}; TRACE_SEC_MULT=${TRACE_SEC_MULT:-0.001}
 TS=$(date -u +%Y-%m-%dT%H%M%SZ); RUN_ID="${TS}_${STAGE}_${CONFIG}_${NET}_${WL}_r${RATE}"
-mkdir -p "$RESULTS_DIR/$RUN_ID"; OUT="$RESULTS_DIR/$RUN_ID"
+mkdir -p "$RESULTS_DIR/$RUN_ID"; OUT="$RESULTS_DIR/$RUN_ID"; OUT_C="$RESULTS_DIR_IN_CONTAINER/$RUN_ID"
 
 case "$WL" in
   sharegpt) DS=(--dataset-name sharegpt --dataset-path "${SHAREGPT_JSON:?}") ;;
@@ -39,7 +42,7 @@ vllm bench serve --backend vllm --base-url "$BASE_URL" --model "$MODEL" ${TOKENI
   "${DS[@]}" "${LOAD[@]}" --seed "$SEED" \
   --percentile-metrics ttft,tpot,itl,e2el --metric-percentiles 50,90,99 \
   --goodput ttft:${SLO_CHAT_TTFT:-1000} tpot:${SLO_CHAT_TPOT:-50} \
-  --save-result --save-detailed --result-dir "$OUT" --result-filename bench.json "$@" 2>&1 | tee "$OUT/bench.log"
+  --save-result --save-detailed --result-dir "$OUT_C" --result-filename bench.json "$@" 2>&1 | tee "$OUT/bench.log"
 
 python3 - "$OUT" "$RUN_ID" "$STAGE" "$CONFIG" "$NET" "$WL" "$RATE" <<'PY'
 import json, sys, os

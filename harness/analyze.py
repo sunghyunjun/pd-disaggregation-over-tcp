@@ -59,7 +59,7 @@ def analyze(path, slos, tbt_stat):
     }
     for name, slo in slos.items():
         T, B = slo.get("ttft", float("inf")) / 1000, slo.get("tbt", float("inf")) / 1000
-        ok = [ (e is None) and (t <= T) and (pq <= B) for t, pq, e in zip(ttfts, per_req_q, errors) ]
+        ok = [ (not e) and (t <= T) and (pq <= B) for t, pq, e in zip(ttfts, per_req_q, errors) ]   # vLLM saves "" for success
         n_ok = sum(ok)
         row[f"attain_{name}"] = round(n_ok / max(1, len(ok)), 3)
         row[f"goodput_{name}_req_s"] = round(n_ok / dur, 3) if dur == dur else None
