@@ -52,3 +52,4 @@ KV 전송(디코드 로그, 1024토큰 = 112 MB/요청 = 112 KB/tok · Qwen3-1.7
 |---|---|---|---|---|---|---|---|
 | Gemma 4 31B NVFP4 (nvidia) | O (`/root/.cache/vllm` 마운트 필요, 마찰 #2). **NixlConnector producer로도 기동 O** (Registering KV_Caches, LBHNC) | 96.7 s, 디스크 32.7 GB | 209,266 | 6.39 | **25.1** (p99 25.5) | 109 | Available KV cache memory 50.43 GiB → **258.8 KB/tok (vLLM 계정 기준)**; config 계산값 320은 슬라이딩층 계정 방식 차이로 재검토. 채팅형 TBT SLO = 125 ms, 문서형 = 630 ms |
 | Gemma 4 26B-A4B BF16 (google) | O | 155 s, 디스크 51.6 GB | 280,936 | 8.57 | **7.7** (p99 8.0) | 60 | Available KV 33.85 GiB → **129.4 KB/tok (vLLM 계정)**; config 전역층만 계산 80. 채팅형 TBT SLO = 38 ms, 문서형 = 192 ms. 출력 119 tok/s(conc 1) |
+| Qwen3.6-35B-A3B FP8 (Qwen, hybrid GDN+attn) | O (mamba page 패딩 0.76%, GDN Triton 워밍업) | 디스크 ~35 GB | **2,031,616** | **62.0** | **5.7** (p99 6.0) | 87 | Available KV 47.47 GiB → **24.5 KB/tok (vLLM 계정)**. 32K 요청 62개 동시. 출력 164 tok/s(conc 1). PD 최선 후보 |
