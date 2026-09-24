@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+title: "PD Disaggregation Without RDMA: Break-even Measurements on AWS GPU Instances"
+type: software
+authors:
+  - family-names: Jun
+    given-names: Sunghyun
+license: Apache-2.0
+repository-code: https://github.com/sunghyunjun/pd-without-rdma
+abstract: "Does prefill/decode disaggregation pay off on readily available cloud GPUs (AWS g5/g6/g7) without RDMA? Break-even measurements against colocated serving at equal GPU count and per dollar."

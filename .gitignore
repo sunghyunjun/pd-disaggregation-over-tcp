@@ -1,0 +1,9 @@
+data/raw/
+data/traces/*.jsonl
+results/*/sar.txt
+results/*/dmon.txt
+results/*/prom.txt
+results/*/bench.log
+*.pyc
+__pycache__/
+.terraform/
