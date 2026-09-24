@@ -19,7 +19,7 @@ export MODEL=$MAIN
 
 log "A2 single step (conc 1, 1K in / 512 out)"
 NUM_PROMPTS=8 bench A B1 N0 random inf --max-concurrency 1 --random-input-len 1024 --random-output-len 512 --ignore-eos
-STEP=$(python3 harness/analyze.py $(ls -td results/*_A_B1_N0_random_rinf | head -1)/bench.json | tail -1 | cut -f9)   # tbt_p50_ms
+STEP=$(python3 harness/analyze.py $(ls -td results/*_A_B1_N0_random_rinf | head -1)/bench.json | python3 -c 'import sys; h,v=[l.rstrip("\n").split("\t") for l in sys.stdin][:2]; print(dict(zip(h,v))["tbt_p50_ms"])')
 log "single step ms = $STEP"; echo "$STEP" > results/step_A_main.txt
 
 log "A3 ShareGPT sweep, chunk 2560"
