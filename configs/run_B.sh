@@ -3,7 +3,7 @@
 # Runs ON THE CLIENT NODE. Requires: A_PRIV, B_PRIV env; ~/pd synced on all nodes; GPU nodes reachable by ssh from client (key copied).
 # Steps are independent; each logs to results/run_B.log. Estimated 3.5 h.
 set -u
-export PATH=~/.local/bin:$PATH; cd ~/pd
+export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 : "${A_PRIV:?}" "${B_PRIV:?}"
 export RESULTS_DIR=$HOME/pd/results RESULTS_DIR_IN_CONTAINER=$HOME/pd/results ENV_JSON=$HOME/pd/results/env_B.json
 export SHAREGPT_JSON=$HOME/pd/data/ShareGPT_V3_unfiltered_cleaned_split.json TRACES_DIR=$HOME/pd/data/traces
