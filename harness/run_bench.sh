@@ -40,6 +40,8 @@ fi
 ( while true; do echo "$(date -u +%s) $(curl -s ${METRICS_URL:-$BASE_URL/metrics} | grep -E '^vllm:(num_requests_(running|waiting)|kv_cache_usage_perc|gpu_cache_usage_perc)' | tr '\n' ' ')"; sleep 1; done > "$OUT/prom.txt" ) & PROM=$!
 trap 'kill $SAR $DMON $PROM 2>/dev/null || true' EXIT
 
+# 32K input + 512 output would exceed max-model-len 32768 -> clamp input to 32000 (session B finding)
+ARGS=(); while [ $# -gt 0 ]; do if [ "$1" = "--random-input-len" ] && [ "${2:-}" = "32768" ]; then ARGS+=(--random-input-len 32000); shift 2; else ARGS+=("$1"); shift; fi; done; set -- "${ARGS[@]}"
 vllm bench serve --backend vllm --base-url "$BASE_URL" --model "$MODEL" ${TOKENIZER:+--tokenizer "$TOKENIZER"} \
   "${DS[@]}" "${LOAD[@]}" --seed "$SEED" \
   --percentile-metrics ttft,tpot,itl,e2el --metric-percentiles 50,90,99 \
