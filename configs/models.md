@@ -95,3 +95,10 @@ KV fp8은 Ada·Blackwell에서만(전송 바이트 절반) → g6e/g7/g7e 전 �
 | C | g7e.2xlarge ×2 (+c6i) | 16 | 31B BF16/NVFP4/FP8, 26B-A4B BF16/NVFP4, 35B-A3B, KV fp8 on/off: 양자화 축 + KV 용량 축 |
 | D | g7.2xlarge ×2 / g7e ×2, placement group | 16 | N1 10 Gbps 검증점, 트레이스(Azure·Mooncake), LongBench·HumanEval |
 | E (선택) | g6e.4xlarge ×2 (32) / g5.2xlarge ×2 (16) | 16~32 | Ada 중간점 / Ampere 하한 참조 |
+
+
+## 2026-09-25 결정: Qwen hybrid(3.5 이상, GDN/Mamba) 계열은 핵심 실험에서 제외
+- 근거: C1에서 Qwen3.6-35B-A3B FP8이 0.5 req/s부터 요청의 17%에 5배 넘는 디코드 멈춤(admission 시점 패턴). hybrid의 prefix caching 제약(블록 정렬)도 prefix 반복 워크로드 축과 충돌. vLLM 쪽 문제일 수 있으나 이 실험의 범위 밖.
+- 처리: 35B-A3B는 "관찰"로 보고서에 한 단락만. 세션 C의 P1 멈춤 확인은 선택(10분)으로 강등.
+- 대체: **Qwen3-30B-A3B**(classic GQA MoE, 48층·4 KV 헤드, 96 KB/tok, 공식 FP8·GPTQ-Int4, nvidia NVFP4). g7e에서 BF16 61 GB / FP8 30 GB / NVFP4 16 GB. Gemma 26B-A4B(80 KB/tok, 슬라이딩)와의 MoE 대조이자 KV 용량 축의 중간점.
+- Qwen3.8-27B(hybrid dense)도 같은 이유로 제외. dense Qwen 앵커는 Qwen3-8B 유지.
