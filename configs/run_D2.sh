@@ -20,8 +20,9 @@ serve_p1(){ local tag=$1
   wait
   setsid nohup python3 vllm-src/tests/v1/kv_connector/nixl_integration/toy_proxy_server.py --host 0.0.0.0 --port 8000 \
     --prefiller-hosts $A_PRIV --prefiller-ports 8100 --decoder-hosts $B_PRIV --decoder-ports 8200 > results/toy_proxy_D2_$tag.log 2>&1 < /dev/null & disown
-  sleep 4; curl -s -o /dev/null -w "    proxy %{http_code}\n" localhost:8000/v1/models
+  sleep 4; local code=$(curl -s -o /dev/null -w "%{http_code}" localhost:8000/v1/models); echo "    proxy $code"
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$MAIN CHUNK=2560 PREFIX=off
+  [ "$code" = 200 ] || { echo "    SKIP: 서버가 준비되지 않음"; return 1; }
 }
 tc_set(){ local bw=$1; local burst=$(python3 -c "print(int(${bw%gbit}*1e9/8*0.01))")
   rsh $A_PRIV "IF=\$(ip -o -4 route show to default | awk '{print \$5}'); sudo tc qdisc replace dev \$IF root tbf rate $bw burst $burst latency 50ms"
