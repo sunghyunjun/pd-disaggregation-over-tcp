@@ -47,7 +47,7 @@ resource "aws_instance" "gpu" {
     role           = "gpu${count.index}"
   })
   tags = {
-    Name    = "pd-gpu-${count.index}"
+    Name    = "pd-gpu${local.ws_suffix}-${count.index}"
     Role    = "gpu"
     Profile = var.gpu_profile
   }

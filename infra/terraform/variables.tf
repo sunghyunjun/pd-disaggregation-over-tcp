@@ -77,6 +77,9 @@ variable "client_ami_filter" {
 }
 
 locals {
+  # 워크스페이스별로 이름 충돌을 피한다(default는 접미사 없음, 기존 상태 보존)
+  ws_suffix = terraform.workspace == "default" ? "" : "-${terraform.workspace}"
+
   profiles = {
     g5_xl  = { type = "g5.xlarge", note = "A10G 24GB, 4 vCPU, 2.5 Gbps baseline (burst 10) - plumbing only" }
     g5_2x  = { type = "g5.2xlarge", note = "A10G 24GB, 8 vCPU, 5 Gbps baseline (burst 10) - stage A single node" }

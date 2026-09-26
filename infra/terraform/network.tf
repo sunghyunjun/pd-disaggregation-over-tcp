@@ -6,7 +6,7 @@ data "aws_subnet" "chosen" {
 }
 
 resource "aws_security_group" "nodes" {
-  name        = "pd-without-rdma-sg"
+  name        = "pd-without-rdma-sg${local.ws_suffix}"
   description = "SSH from allowed CIDR; all traffic among experiment nodes"
   vpc_id      = data.aws_subnet.chosen.vpc_id
   ingress {
@@ -31,12 +31,12 @@ resource "aws_security_group" "nodes" {
 }
 
 resource "aws_key_pair" "key" {
-  key_name   = "pd-without-rdma-key"
+  key_name   = "pd-without-rdma-key${local.ws_suffix}"
   public_key = file(pathexpand(var.ssh_public_key_path))
 }
 
 resource "aws_placement_group" "cluster" {
   count    = var.placement_group ? 1 : 0
-  name     = "pd-without-rdma-pg"
+  name     = "pd-without-rdma-pg${local.ws_suffix}"
   strategy = "cluster"
 }
