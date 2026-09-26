@@ -478,3 +478,33 @@ knee 4점 측정은 17:12 UTC에 끝났으나 직후 자동 shutdown으로 rsync
 | NIXL `num_workers`/`num_threads` | 1 / 8 | 8 / 16 | **예** | 동시 요청의 직렬화 완화 |
 | 노드 vCPU | 8 | 16 (g7.4xlarge) | 아니오 | 소스 노드 여유 가설 검증 |
 → 실행 계획은 `configs/run_D_xfer.sh`(모델 없이 전송만, iperf 흐름 수 기준점 + NIXL 단독 프로브 + 노브 스윕 + 수정된 tc 쉐이핑).
+
+### **정정·확정 · 천장은 AWS가 아니라 UCX의 GPU 경로다 (2026-09-26, 코드 + 외부 측정 대조)**
+앞 절의 "num_threads 8, split_batch_size는 패치 필요"를 정정한다. 실제로 읽은 판본은 v0.11.0이었고, **우리가 돌린 v0.30.0은 커넥터가 패키지로 쪼개져 있다**(`kv_connector/v1/nixl/base_worker.py`, `pull_worker.py`).
+- `num_threads`는 **기본 4이고 `kv_connector_extra_config`로 조정 가능**(base_worker.py:521~531). 패치 불필요.
+- 디스크립터는 (레이어 × 블록) 하나씩, **K·V가 한 단위로 묶여** 레이어당 하나의 NIXL 영역(base_worker.py:1293·1308). 크기 = 2 × 블록 × KV헤드 × head_dim × dtype = 우리 모델에서 64 KiB. 요청당 `make_prepped_xfer` 한 번, 블록 병합 없음.
+- 전송 발행과 완료 폴링이 **엔진 스텝 루프에서** 돈다(pull_worker.py:47·530-540, base_worker.py:2640·2844). 백그라운드 스레드는 핸드셰이크용 1개뿐(NIXL 스레드 안전성 미보장 주석).
+- `kv_buffer_device`가 `cuda`면 VRAM 등록, `cpu`면 호스트 버퍼 경유(base_worker.py:583·1062-1073).
+
+**UCX TCP의 구조적 한계 (openucx 소스)**
+- TCP는 엔드포인트 쌍당 **소켓 하나**다. `dev_num_paths = 1`(uct_iface.c:515)이고 tcp가 재정의하지 않으며, UCP는 장치당 레인을 `min(local, remote) dev_num_paths`로 제한한다(select.c:1953). **`UCX_TCP_NUM_PATHS`는 없다**(NUM_PATHS는 IB 전용).
+- 레일은 장치 단위이므로 ENA 1개에서는 무효. NIXL은 이미 `UCX_MAX_RMA_RAILS=2`를 강제하지만 NIC가 하나라 효과 없음(ucx_utils.cpp:484). 보조 IP도 장치로 세지 않음(`/sys/class/net` 열거).
+- **TCP 메모리 도메인은 호스트 메모리만 접근 가능**(tcp_md.c:33) → GPU 버퍼는 cuda_copy가 호스트 바운스 버퍼로 반드시 스테이징. 즉 디바이스 제로카피가 원리적으로 불가. GPU 쪽 노브는 `UCX_RNDV_FRAG_SIZE`(기본 host:512K, cuda:4M).
+- TCP는 복사 기반이므로 **진행 스레드가 복사와 syscall을 직접 수행** → 워커 하나를 한 스레드가 돌리는 구성이 직렬 상한. `UCX_PROGRESS_THREAD`는 없고 `UCX_ADAPTIVE_PROGRESS`, `UCX_USE_MT_MUTEX`가 관련 노브. NIXL은 `UCX_RNDV_THRESH=inf` 강제.
+
+**외부 측정과의 대조 — 우리 값이 이미 라이브러리 천장**
+| 출처 | 링크 속도 | UCX GPU↔GPU | UCX CPU↔CPU | 비교 대상 |
+|---|---|---|---|---|
+| llm-d 네트워킹 글 (2026-06-23) | 100 GbE TCP | **0.55 GB/s** | 4.0 GB/s | UCCL 4.7~4.9 GB/s (9배) |
+| 우리 세션 B (4K, 저부하) | 5 Gbps 흐름 상한 | **0.51 GB/s (4.05 Gbps)** | 미측정 | — |
+→ **100 GbE에서도 UCX의 GPU 경로는 0.55 GB/s다. 우리는 20분의 1 속도 링크에서 0.51 GB/s를 냈다.** 즉 우리는 AWS 상한에 막힌 것이 아니라 **UCX GPU 스테이징 경로의 천장에 이미 도달**해 있다. 흐름당 5 Gbps가 병목이 되려면 라이브러리가 4배 빨라져야 한다. **C4 최종: 대역폭 축은 이 스택에서 의미가 작다. 배치 그룹·ENA Express·MPTCP는 우선순위에서 내린다.**
+- 같은 글의 CPU↔CPU 4.0 GB/s는 **`kv_buffer_device=cpu`(호스트 버퍼) 전환이 8배까지 이득일 수 있다**는 예측을 준다 — 패치 없이 가능한 최우선 실험.
+- 디스크립터 수 자체가 비용이라는 증거: vLLM #55434(GB200) 랭크당 112,092 디스크립터, 제출이 전송 시간의 56.9%(cuda_ipc). 패킹으로 약 1,100개로 줄이는 제안. PR #55157은 NIXL 1.5 strided descriptor로 수백만 → 수백 개.
+- 계산과 겹치기: PR #56874(레이어별 WRITE 푸시) 자체 보고 처리량 +125%, TTFT 2.9배 개선 — 오픈·환경변수 옵트인. 기본은 프리필 끝의 단일 READ(우리 관측과 일치).
+
+**수정된 우선순위 (패치 불필요 → 필요 순)**
+1. `kv_buffer_device=cpu` — 예측 최대 8배. vLLM 설정만.
+2. `num_threads` 4 → 8·16 (extra_config) + `UCX_TCP_TX_SEG_SIZE=256k`, `UCX_TCP_RX_SEG_SIZE=256k`, `UCX_TCP_MAX_IOV=16`, `UCX_TCP_MAX_POLL=-1`, `UCX_RNDV_FRAG_SIZE=host:4M,cuda:8M`, `UCX_TCP_SNDBUF/RCVBUF=8m`.
+3. `--block-size` 32·64 → 디스크립터 128·256 KiB, 개수 1/2·1/4.
+4. UCCL 백엔드 검토(llm-d 측정 9배). NIXL 플러그인 여부 확인 필요.
+5. 패치 필요: NIXL `split_batch_size`(1024) 노출, 레이어별 겹치기 PR 백포트.
