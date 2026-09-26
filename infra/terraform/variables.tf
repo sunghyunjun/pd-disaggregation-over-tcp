@@ -29,6 +29,12 @@ variable "gpu_profile" {
     error_message = "unknown gpu_profile"
   }
 }
+# 두 번째 GPU 노드에 다른 타입을 쓸 때만 설정 (예: g6e_2x vs g7e_2x 정면 비교). 빈 값이면 gpu_profile과 같음.
+variable "gpu_profile_b" {
+  type    = string
+  default = ""
+}
+
 variable "gpu_count" {
   type    = number
   default = 1
@@ -83,5 +89,6 @@ locals {
     g7_4x  = { type = "g7.4xlarge", note = "RTX PRO 4500 32GB, 16 vCPU, 80 Gbps baseline (peak 100)" }
     g7e_2x = { type = "g7e.2xlarge", note = "RTX PRO 6000 96GB, 8 vCPU, 50 Gbps fixed - E7 only (30B MoE / Gemma 4), us-east-1b or 1d" }
   }
-  gpu_type = local.profiles[var.gpu_profile].type
+  gpu_type   = local.profiles[var.gpu_profile].type
+  gpu_type_b = var.gpu_profile_b != "" ? local.profiles[var.gpu_profile_b].type : local.profiles[var.gpu_profile].type
 }

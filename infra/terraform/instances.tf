@@ -27,7 +27,7 @@ data "aws_ami" "client" {
 resource "aws_instance" "gpu" {
   count                       = var.gpu_count
   ami                         = data.aws_ami.gpu.id
-  instance_type               = local.gpu_type
+  instance_type               = count.index == 1 && var.gpu_profile_b != "" ? local.gpu_type_b : local.gpu_type
   subnet_id                   = data.aws_subnet.chosen.id
   vpc_security_group_ids      = [aws_security_group.nodes.id]
   key_name                    = aws_key_pair.key.key_name
