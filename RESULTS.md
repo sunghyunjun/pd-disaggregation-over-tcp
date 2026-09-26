@@ -446,3 +446,35 @@ knee 4점 측정은 17:12 UTC에 끝났으나 직후 자동 shutdown으로 rsync
 - Gemma 4 26B-A4B(30층, KV 헤드 8, head_dim 256, FP8 KV): 토큰·레이어당 2×8×256×1 = 4,096 B → **블록(16토큰)·레이어당 64 KiB**. 140 MB 전송 = 디스크립터 약 2,200개.
 - Qwen3-8B(36층, KV 헤드 8, head_dim 128, BF16): 토큰당 147,456 B = 144 KiB/tok(vLLM 보고값과 일치), 디스크립터도 64 KiB.
 - UCX 단독 백엔드일 때 `nixl_agent_config(num_threads=8)`.
+
+### 전송이 왜 낮은가 · 소스 확인 결과 (2026-09-26, 코드 읽기 + 기존 로그, 새 측정 아님)
+**전송 경로 구조 (vLLM NixlConnector → NIXL v1.4.1 UCX 백엔드 → UCX TCP)**
+- vLLM은 요청 하나당 `make_prepped_xfer("READ", ...)` 한 번. 디스크립터는 (레이어 × 블록), 각 64 KiB(블록 16토큰 × 레이어당 4,096 B).
+- vLLM은 UCX 단독일 때 `nixl_agent_config(num_threads=8)`만 넘긴다. NIXL 백엔드의 나머지 파라미터는 기본값: **`num_workers` 1, `split_batch_size` 1024, `ucx_num_device_channels` 4** (`src/plugins/ucx/ucx_backend.cpp`, v1.4.1 라인 646·754·776·783).
+- `num_threads>0`이면 스레드풀 엔진이 되고, **디스크립터 수가 `split_batch_size`(1024) 미만이면 쪼개지 않는다.** 쪼갤 때 청크 크기는 `max(ceil(N/스레드), 1024)`.
+- NIXL에 getenv가 없다 → `split_batch_size`·`num_workers`는 환경변수로 못 바꾼다. vLLM이 `kv_connector_extra_config`로 넘겨주도록 고쳐야 한다(업스트림 기여 후보).
+
+**우리 측정점이 실제로 쓴 연결 수 (계산)**
+| 워크로드 | 전송량 | 디스크립터 | 청크(=워커) | 계산 처리량 |
+|---|---|---|---|---|
+| ShareGPT ~800 tok | 24 MB | 384 | **1** (분할 없음) | 2.3~3.5 Gbps |
+| 4K | 140 MB | 2,240 | 3 | **3.8~4.05** |
+| 16K | 260 MB | 4,160 | 5 | 2.95 → 2.30 (부하 증가) |
+| 32K | 412 MB | 6,592 | 7 | 2.25~2.34 |
+→ **연결이 늘어나는데 처리량은 떨어진다.** 즉 이 구성의 천장은 흐름당 5 Gbps가 아니다. 상관이 가장 큰 변수는 **소스 노드의 여유**다: 4K·0.25 req/s(프리필 한가함)에서 4.05 Gbps, 같은 4K를 1 req/s로 올리면 3.13, 프리필이 포화한 16K·32K에서 2.2~3.0. 8 vCPU 노드에서 vLLM이 CPU를 쓰는 동안 UCX 진행 스레드와 복사 경로가 밀리는 것으로 보인다(가설, D-1에서 vLLM 없이 검증).
+
+**끌어올릴 수 있는 수단 (환경변수만으로 가능한 것부터)**
+| 수단 | 현재값 | 시도값 | 패치 필요 | 근거 |
+|---|---|---|---|---|
+| `UCX_TCP_TX_SEG_SIZE` | **8 KB** | 64k·256k | 아니오 | 64 KiB 디스크립터가 8 KB 복사 버퍼로 8조각 (`uct/tcp/tcp_iface.c`) |
+| `UCX_TCP_RX_SEG_SIZE` | 64 KB | 256k | 아니오 | 같은 표 |
+| `UCX_TCP_MAX_IOV` | 6 | 16 | 아니오 | sendmsg 벡터 길이 |
+| `UCX_TCP_SNDBUF`/`RCVBUF` | 시스템 기본 | 8m | 아니오 | BDP 확보 |
+| `UCX_ZCOPY_THRESH` / `UCX_RNDV_SCHEME` | auto | 0 / get_zcopy·put_zcopy | 아니오 | 복사 단계 축소 |
+| `UCX_MAX_RNDV_RAILS` | 2 | 4 | 아니오 | **효과 없을 것**: 레일은 장치 단위, ENA 1개 |
+| vLLM `--block-size` | 16 | 32·64 | 아니오 | 디스크립터 128·256 KiB로 키우되 분할 청크는 줄어듦 — 상충 실험 |
+| vLLM `kv_buffer_device=cpu` | device | cpu | 아니오 | cuda_copy 단계 제거, DRAM↔DRAM 전송 |
+| NIXL `split_batch_size` | 1024 | 128·256 | **예** | ShareGPT 규모가 분할되지 않는 원인 |
+| NIXL `num_workers`/`num_threads` | 1 / 8 | 8 / 16 | **예** | 동시 요청의 직렬화 완화 |
+| 노드 vCPU | 8 | 16 (g7.4xlarge) | 아니오 | 소스 노드 여유 가설 검증 |
+→ 실행 계획은 `configs/run_D_xfer.sh`(모델 없이 전송만, iperf 흐름 수 기준점 + NIXL 단독 프로브 + 노브 스윕 + 수정된 tc 쉐이핑).
