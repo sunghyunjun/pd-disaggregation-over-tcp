@@ -31,12 +31,12 @@ serve_p1(){ local tag=$1
 points(){ bench D "$1" N0 random 0.25 --random-input-len 4096 --random-output-len 512; xfer
           bench D "$1" N0 random 1    --random-input-len 4096 --random-output-len 512; xfer; }
 
-log "D1b1 대조군: GPU 등록, 점유율 0.55 (호스트 버퍼와 같은 KV 용량)"
-unset UCX_EXTRA KV_BUFFER_DEVICE NIXL_THREADS BLOCK; export GPU_UTIL=0.55
+log "D1b1 대조군: GPU 등록, 점유율 0.70 (호스트 버퍼와 같은 KV 용량)"
+unset UCX_EXTRA KV_BUFFER_DEVICE NIXL_THREADS BLOCK; export GPU_UTIL=0.70
 serve_p1 ctl && points d1b_ctl_gpu; mem
 
-log "D1b2 호스트 버퍼, 점유율 0.55"
-export KV_BUFFER_DEVICE=cpu GPU_UTIL=0.55
+log "D1b2 호스트 버퍼, 점유율 0.70"
+export KV_BUFFER_DEVICE=cpu GPU_UTIL=0.70
 serve_p1 host && points d1b_host; mem
 
 log "D1b3 호스트 버퍼 + UCX 노브"
