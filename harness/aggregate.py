@@ -28,6 +28,10 @@ def main():
              "ttft_mean_ms":b.get("mean_ttft_ms"),"ttft_p50_ms":b.get("median_ttft_ms"),"ttft_p90_ms":b.get("p90_ttft_ms"),"ttft_p99_ms":b.get("p99_ttft_ms"),
              "tpot_mean_ms":b.get("mean_tpot_ms"),"tpot_p99_ms":b.get("p99_tpot_ms"),"itl_p50_ms":b.get("median_itl_ms"),"itl_p90_ms":b.get("p90_itl_ms"),"itl_p99_ms":b.get("p99_itl_ms"),
              "vllm_goodput_req_s":b.get("request_goodput"),"discarded":meta.get("discarded")}
+        il=b.get("input_lens") or []
+        ol=b.get("output_lens") or []
+        if il: row["input_len_median"]=sorted(il)[len(il)//2]
+        if ol: row["output_len_median"]=sorted(ol)[len(ol)//2]
         if os.path.exists(bj):
             try:
                 x=analyze(bj,slos,a.tbt_stat)
