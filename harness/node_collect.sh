@@ -10,7 +10,7 @@ PAT='^vllm:(num_requests_running|num_requests_waiting|kv_cache_usage_perc|num_pr
 
 case "${1:-start}" in
 stop)
-setsid nohup bash -c "IF=\$(ip -o -4 route show to default | awk '{print \$5}'); stdbuf -oL sar -n DEV 1 | stdbuf -oL grep --line-buffered \"\$IF\"" > "$OUT/collect_${H}_sar.txt" 2>/dev/null < /dev/null & disown
+  pkill -f node_collect_prom; pkill -f "[s]ar -n DEV"; pkill -f "[n]vidia-smi dmon"; echo "stopped on $H"; exit 0;;
 verify)
   for p in $PORTS; do
     n=$(curl -s --max-time 10 "http://127.0.0.1:$p/metrics" | grep -Ec "$PAT" || true)
@@ -36,7 +36,7 @@ done
 EOP
 chmod +x /tmp/node_collect_prom.sh
 setsid nohup /tmp/node_collect_prom.sh > "$OUT/collect_${H}_prom.tsv" 2>/dev/null < /dev/null & disown
-setsid nohup bash -c "IF=\$(ip -o -4 route show to default | awk '{print \$5}'); sar -n DEV 1 | awk -v i=\"\$IF\" '\$0 ~ i {print strftime(\"%s\"), \$0; fflush()}'" > "$OUT/collect_${H}_sar.txt" 2>/dev/null < /dev/null & disown
+setsid nohup bash -c "IF=\$(ip -o -4 route show to default | awk '{print \$5}'); stdbuf -oL sar -n DEV 1 | stdbuf -oL grep --line-buffered \"\$IF\"" > "$OUT/collect_${H}_sar.txt" 2>/dev/null < /dev/null & disown
 setsid nohup bash -c "nvidia-smi dmon -s um -d 1 | awk '{print strftime(\"%s\"), \$0; fflush()}'" > "$OUT/collect_${H}_dmon.txt" 2>/dev/null < /dev/null & disown
 sleep 3
 n=$(wc -l < "$OUT/collect_${H}_prom.tsv" 2>/dev/null || echo 0)
