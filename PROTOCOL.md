@@ -385,6 +385,17 @@ ShareGPT는 1P2D, LongBench는 2P1D가 각각 1P1D 비율보다 낫다. 느린 �
 
 - 폐기 조건: 스팟 중단, 클라이언트 CPU 90% 초과, iperf 이탈 20% 초과, 요청 실패율 1% 초과. 폐기한 런도 파일은 남기고 discarded: true 표시.
 
+### 집계는 SLO를 명시해서 다시 만듭니다
+
+`results/all_runs.csv`는 **반드시 SLO를 인자로 주고** 만듭니다. `aggregate.py`의 기본값은 대화 TBT 100 ms·문서 400 ms인데 이 연구의 기준은 50 ms·250 ms입니다. 기본값으로 만든 CSV는 달성률과 굿풋 열이 전부 느슨하게 나옵니다(2026-09-27에 실제로 한 번 어긋나 있었습니다).
+
+    python3 harness/aggregate.py results -o results/all_runs.csv \
+      --slo chat=ttft:1000,tbt:50 --slo doc=ttft:3000,tbt:250
+
+사다리를 `vllm bench sweep serve`로 잰 경우에는 먼저 변환을 거칩니다.
+
+    python3 harness/sweep_to_runs.py results/sweep/<실험이름> --stage E5 --config P1tuned --workload sharegpt
+
 ### results JSON 한 파일의 형태
 
 {
