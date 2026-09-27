@@ -6,7 +6,7 @@ set -u
 MODEL=$1; shift
 CHUNK=${CHUNK:-2048}; PORT=${PORT:-8000}; MAXLEN=${MAXLEN:-32768}; GPU_UTIL=${GPU_UTIL:-0.90}; PREFIX=${PREFIX:-on}; CONNECTOR=${CONNECTOR:-none}
 IMAGE=${IMAGE:-vllm/vllm-openai:v0.30.0}; OWN_IP=${OWN_IP:-$(hostname -I | awk '{print $1}')}
-ENVS=(-e HF_TOKEN="$(cat ~/.hf_token 2>/dev/null)" -e VLLM_SSM_CONV_STATE_LAYOUT=DS)
+ENVS=(-e HF_TOKEN="$(cat ~/.hf_token 2>/dev/null)" -e VLLM_SSM_CONV_STATE_LAYOUT=DS -e VLLM_SERVER_DEV_MODE=1)
 # UCX_EXTRA: space-separated K=V pairs passed into the container (transfer-path tuning)
 for kv in ${UCX_EXTRA:-}; do ENVS+=(-e "$kv"); done
 ARGS=(--port "$PORT" --max-model-len "$MAXLEN" --gpu-memory-utilization "$GPU_UTIL" --max-num-batched-tokens "$CHUNK" --max-num-seqs 256 --seed 0 --limit-mm-per-prompt '{"image":0}')

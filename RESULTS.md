@@ -762,3 +762,21 @@ PRO 6000, 31B FP8, max-model-len 16,384 고정. util만 바꿔 KV 용량을 8.6�
 
 ### **방법론 경고 · 시스템 백분위는 요청별 멈춤을 감춘다 (이번에 실제로 속았다)**
 4K·B2 구간에서 첫 토큰 158 ms, 토큰 간 **시스템 p99 8.6 ms**를 보고 "복제본이 간섭을 흡수했다"고 중간 판단했는데, **요청별 최대값 기준 멈춤 비율은 0.48**이었다. 스파이크가 요청마다 한두 번이라 시스템 백분위에 묻힌다. 프로토콜이 요청별 최대값을 1차 지표로 정한 이유가 이것이며, 로그를 실시간으로 읽을 때도 `analyze.py` 판정 전에는 결론을 내리지 말 것.
+
+## 하네스 수정 (2026-09-27, 측정 전 선행 작업)
+
+### 마찰 #12 해결 · 프로메테우스 수집기 재작성
+원인: 이전 판이 `curl --max-time 1`로 `/metrics`를 긁고 JSON을 즉석 조립했다. 타임아웃이 짧아 본문이 비면 `{"ts":...,}`만 남고, 지표 이름도 v0.30.0과 일부 달랐다(`gpu_cache_usage_perc`는 없고 `kv_cache_usage_perc`, `num_preemptions`는 `_total` 접미사가 붙는다).
+대응(`harness/node_collect.sh` v2):
+- 타임아웃 10초, **원문을 TSV로 저장**(`ts \t port \t metric \t value`), 파싱은 오프라인으로 분리. JSON 이스케이프 문제도 사라짐.
+- 스크레이프 실패 시 `_scrape_error` 줄을 남겨 **"0"과 "수집 실패"를 구분**.
+- `node_collect.sh verify`로 세션 시작 전에 매칭 지표 줄 수를 확인. 시작 3초 후 줄 수가 0이면 경고를 출력.
+- 수집 대상에 **`vllm:prefix_cache_hits` / `vllm:prefix_cache_queries`** 추가 → 마찰 #11(접두어 캐시 오염)을 적중률로 정량화 가능.
+- 오프라인 파서 `harness/parse_prom.py`: 각 런의 `result.json`에서 시작 시각과 duration을 읽어 구간별 running·waiting 평균, KV 사용률 최대, 선점 수, 접두어 적중률(구간 증분)을 표로 출력. 합성 데이터로 자체 시험 통과(적중률 30/100 = 0.300 정확).
+
+### 마찰 #11 해결 · 런 사이 캐시 리셋
+`vllm bench sweep serve`는 서버를 직접 띄우는 구조라 우리 원격 도커·별도 클라이언트 구성과 맞지 않는다. 대신 **그 도구가 쓰는 것과 같은 엔드포인트**를 직접 호출한다.
+- `harness/reset_caches.sh BASE_URL...` → `/reset_prefix_cache`, `/reset_mm_cache`, `/reset_encoder_cache`에 POST. 404는 무시(해당 캐시 없는 구성), 그 외 실패는 보고.
+- 이 엔드포인트는 **서버가 `VLLM_SERVER_DEV_MODE=1`로 떠 있어야** 존재한다 → `harness/serve.sh`에 추가.
+- `harness/run_bench.sh`에 `RESET_URLS` 훅 추가: 값이 있으면 측정 직전 리셋, 비어 있으면 건너뛰어 기존 스크립트와 호환.
+- 앞으로 사다리 측정은 `RESET_URLS`를 넘기고 지점마다 `SEED`를 바꾼다. 접두어 캐시 효과를 보려면 그것만 따로 실험한다.
