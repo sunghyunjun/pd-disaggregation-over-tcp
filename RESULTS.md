@@ -828,3 +828,6 @@ PRO 6000, 31B FP8, max-model-len 16,384 고정. util만 바꿔 KV 용량을 8.6�
 → **성능 저하가 전혀 없다.** 이유를 계산하면 분명하다. 요청당 KV 약 230 MB(4,096토큰 × 57.6 KB)를 0.5 req/s로 보내면 평균 **114 MB/s = 0.91 Gbps**, 기준선 5 Gbps의 18%다. 순간 전송은 1 Gbps 남짓 튀지만 평균이 낮아 크레딧을 태우지 않는다.
 → **"튜닝 전송이 g6e의 기준선을 넘어선다"는 우려는 현실 부하에서 성립하지 않는다.** 평균 전송 대역폭은 첨두값이 아니라 **요청률 × 요청당 KV**로 정해진다. 기준선을 넘기려면 4K 입력에서 약 2.4 req/s, 16K에서 약 0.6 req/s를 지속해야 한다(추정). 그런데 L40S 쌍은 4K에서 1 req/s만 넘어도 SLO가 깨지므로(달성률 0.83), **크레딧이 문제가 되기 전에 GPU가 먼저 한계에 닿는다.**
 → 결론: g6e에서 분리를 쓸 때 네트워크 크레딧은 실질 제약이 아니다. 제약은 (1) 대화 규모의 낮은 지원 부하(4 req/s), (2) 디코드 노드 KV 용량이다.
+
+**마찰 #17 · terraform apply가 403으로 실패하지만 인스턴스는 정상 생성됨**
+`infra/up.sh g7e_2x 2 --pg --ws e4`가 두 인스턴스 모두에 대해 `UnauthorizedOperation: ec2:DescribeInstanceAttribute`로 종료됐다. 생성 자체는 성공했고 `terraform state list`에도 8개 리소스가 모두 들어 있었다 — 실패한 것은 생성 **직후의 속성 재조회**(instanceInitiatedShutdownBehavior)뿐이다. 영향은 `terraform output`이 실행되지 않아 `last-outputs-e4.json`이 비는 것 하나다. 우회: 인스턴스 IP를 AWS CLI로 직접 읽고, 정리는 `infra/down.sh --ws e4`가 그대로 처리한다(상태가 완전하므로). 근본 해결은 terraform-admin에 `ec2:DescribeInstanceAttribute` 부여.
