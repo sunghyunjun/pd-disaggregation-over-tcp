@@ -845,3 +845,10 @@ PRO 6000, 31B FP8, max-model-len 16,384 고정. util만 바꿔 KV 용량을 8.6�
 - `harness/sweep_ladder.sh` — 요청률 목록을 bench-params JSON으로 만들어 `vllm bench sweep serve`를 부른다. 지점마다 `num_prompts = max(MIN_PROMPTS, rate × POINT_SEC)`와 **서로 다른 시드**를 넣는다(시드 고정은 접두어 재사용을 부른다). `--after-bench-cmd`로 우리 `reset_caches.sh`를 꽂는다 — 상류의 기본 리셋은 `serve_cmd[0]`이 `vllm`으로 끝나야 동작하므로 래퍼에서는 쓸 수 없다.
 - `harness/sweep_to_runs.py` — `BENCH--r*/run=N.json`을 기존 배치 `results/<RUN_ID>/{result,bench}.json`으로 변환하는 어댑터. 실제 과거 `bench.json`으로 왕복 검증했다: 변환 → `aggregate.py` → `attain_chat 1.0`, `tbt_p99_ms 10.61`까지 그대로 나온다. 즉 **기존 집계·표·비용 계산을 하나도 고치지 않고** 새 측정 경로를 붙일 수 있다.
 - `--dry-run`으로 명령 조립을 확인했다(서버 기동 없음). 걸림돌 하나: `--resume`은 실험 폴더가 **이미 있을 때만** 유효하고 없으면 `ValueError`로 죽는다 → 폴더 존재 여부로 조건부 전달.
+
+**마찰 #18 · NIC 수집기가 두 가지 이유로 한 줄도 남기지 않았다**
+`node_collect.sh`의 sar 수집이 E4에서 0줄이었다. 원인이 둘 겹쳐 있었다.
+1. **인터페이스 이름 하드코딩** — 필터가 `ens5|eth0`였는데 g7e의 기본 인터페이스는 `enp39s0`이다. g5/g6e에서는 맞았기 때문에 지금까지 드러나지 않았다.
+2. **파이프에서의 블록 버퍼링** — sar를 파이프로 넘기면 줄 단위로 흘리지 않는다. `awk ... fflush()`를 써도 **sar 쪽** 버퍼가 남아 파일이 비어 있다.
+고침: 기본 경로에서 인터페이스 이름을 런타임에 읽고(`ip -o -4 route show to default`), `stdbuf -oL`을 sar와 필터 양쪽에 붙인다. E4 진행 중에 보조 수집기(`collect_*_nic.txt`)를 띄워 노브 4종 구간의 NIC 바이트는 확보했다.
+**같이 겪은 자기 실수**: 노드에서 `pkill -f "sar -n DEV"`를 돌렸는데 내 ssh 명령줄 자체가 그 문자열을 포함해 ssh 세션이 같이 죽었다(exit 255). 원격 pkill은 항상 대괄호 패턴(`[s]ar -n DEV`)으로. 실험 프로세스와 컨테이너는 무사했다.
