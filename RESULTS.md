@@ -934,3 +934,10 @@ ucp_worker.c:1492 UCX ERROR uct_iface_open(tcp/enp39s0) failed: Invalid paramete
 backend_plugin.h:102] Failed to create engine: Failed to create UCX worker: Invalid parameter
 ```
 `UCX_TCP_TX_SEG_SIZE`를 올릴 때는 `UCX_TCP_RX_SEG_SIZE`를 **같이 또는 더 크게** 올려야 한다. 양쪽을 1 MB로 맞춰 재측정한 값이 위 표의 (b)다.
+
+**마찰 #20 · 높은 요청률에서 클라이언트 프록시가 파일 한도에 걸려 500을 낸다**
+세션 E5의 복제본 셋, ShareGPT 48 req/s에서 8,640요청 중 803개(9.3%)가 `Internal Server Error`로 실패했다. 서버 세 대는 모두 정상이었고 원인은 클라이언트의 라운드로빈 프록시였다: `OSError: [Errno 24] Too many open files`. 우분투 기본 소프트 한도 1,024를 동시 연결이 넘었다. 분리 구성의 프록시는 요청마다 연결을 두 개(프리필·디코드) 열어 더 빨리 걸린다.
+- 즉시 조치: 실행 중인 측정 스크립트에 `prlimit --nofile=65536:`을 걸어 이후 뜨는 프록시와 부하 생성기가 물려받게 했다(하드 한도 1,048,576이라 루트 불필요).
+- 해당 지점은 프로토콜의 실패율 1% 기준으로 폐기하고 `configs/run_E5b.sh`로 재측정.
+- 영구 조치: `harness/rr_proxy.py`가 시작 시 소프트 한도를 스스로 올리고, 측정 스크립트 상단에 `ulimit -n 65536`.
+- 앞선 세션의 최고 요청률은 두 대 24~32 req/s라 한도 아래였다(성공 요청 수가 요청률 × 180과 정확히 일치함을 확인).

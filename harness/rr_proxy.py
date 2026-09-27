@@ -2,7 +2,7 @@
 """Minimal round-robin OpenAI-compatible proxy for the B2 baseline (streaming pass-through).
 Usage: rr_proxy.py --port 8000 --upstreams http://10.0.0.11:8000 http://10.0.0.12:8000
 """
-import argparse, itertools, aiohttp
+import argparse, itertools, aiohttp, resource
 from aiohttp import web
 
 async def handle(req):
@@ -20,6 +20,9 @@ async def on_start(app): app["sess"] = aiohttp.ClientSession(timeout=aiohttp.Cli
 async def on_stop(app): await app["sess"].close()
 
 if __name__ == "__main__":
+    # 마찰 #20: 높은 요청률에서 기본 파일 한도 1,024에 걸려 500을 낸다 → 소프트 한도를 하드 한도까지 올린다
+    _soft, _hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (min(65536, _hard), _hard))
     ap = argparse.ArgumentParser(); ap.add_argument("--port", type=int, default=8000); ap.add_argument("--upstreams", nargs="+", required=True)
     a = ap.parse_args()
     app = web.Application(); app["rr"] = itertools.cycle(a.upstreams)

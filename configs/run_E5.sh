@@ -4,6 +4,7 @@
 # NVFP4 체크포인트는 KV가 FP8로 내장(26B 28.8 KB/tok, 31B 115 KB/tok). 모든 분리 구성은 튜닝 UCX.
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
+ulimit -n 65536 2>/dev/null || true   # 마찰 #20: 높은 요청률에서 프록시가 기본 한도 1,024에 걸림
 : "${A_PRIV:?}" "${B_PRIV:?}" "${C_PRIV:?}"
 export RESULTS_DIR=$HOME/pd/results RESULTS_DIR_IN_CONTAINER=$HOME/pd/results ENV_JSON=$HOME/pd/results/env_E5.json
 export SHAREGPT_JSON=$HOME/pd/data/ShareGPT_V3_unfiltered_cleaned_split.json
