@@ -4,7 +4,7 @@
 #   - 이제 원문을 필터링한 TSV로 남기고 파싱은 오프라인(harness/parse_prom.py)에서 한다.
 # 사용: node_collect.sh [start|stop|verify]   env: PORTS(기본 "8100 8200"), INTERVAL(기본 1)
 set -u
-PORTS=${PORTS:-"8100 8200"}; INTERVAL=${INTERVAL:-1}; OUT=${OUT:-~/pd/results}; H=$(hostname -s); mkdir -p "$OUT"
+PORTS=${PORTS:-"8100 8200"}; INTERVAL=${INTERVAL:-1}; OUT=${OUT:-~/pd/results}; H=$(hostname -s); mkdir -p "$OUT"; TAG=${TAG:-$(date -u +%Y%m%dT%H%M%SZ)}
 # 수집할 지표(v0.30.0 실제 이름). 카운터는 _total 접미사가 붙을 수 있어 접두 일치로 잡는다.
 PAT='^vllm:(num_requests_running|num_requests_waiting|kv_cache_usage_perc|num_preemptions|prefix_cache_hits|prefix_cache_queries|prompt_tokens_cached|prompt_tokens|generation_tokens|iteration_tokens_total_sum|iteration_tokens_total_count|request_decode_time_seconds_sum|inter_token_latency_seconds_sum|inter_token_latency_seconds_count)'
 
@@ -35,10 +35,10 @@ while true; do
 done
 EOP
 chmod +x /tmp/node_collect_prom.sh
-setsid nohup /tmp/node_collect_prom.sh > "$OUT/collect_${H}_prom.tsv" 2>/dev/null < /dev/null & disown
-setsid nohup bash -c "IF=\$(ip -o -4 route show to default | awk '{print \$5}'); stdbuf -oL sar -n DEV 1 | stdbuf -oL grep --line-buffered \"\$IF\"" > "$OUT/collect_${H}_sar.txt" 2>/dev/null < /dev/null & disown
-setsid nohup bash -c "nvidia-smi dmon -s um -d 1 | awk '{print strftime(\"%s\"), \$0; fflush()}'" > "$OUT/collect_${H}_dmon.txt" 2>/dev/null < /dev/null & disown
+setsid nohup /tmp/node_collect_prom.sh > "$OUT/collect_${H}_${TAG}_prom.tsv" 2>/dev/null < /dev/null & disown
+setsid nohup bash -c "IF=\$(ip -o -4 route show to default | awk '{print \$5}'); stdbuf -oL sar -n DEV 1 | stdbuf -oL grep --line-buffered \"\$IF\"" > "$OUT/collect_${H}_${TAG}_sar.txt" 2>/dev/null < /dev/null & disown
+setsid nohup bash -c "nvidia-smi dmon -s um -d 1 | awk '{print strftime(\"%s\"), \$0; fflush()}'" > "$OUT/collect_${H}_${TAG}_dmon.txt" 2>/dev/null < /dev/null & disown
 sleep 3
-n=$(wc -l < "$OUT/collect_${H}_prom.tsv" 2>/dev/null || echo 0)
+n=$(wc -l < "$OUT/collect_${H}_${TAG}_prom.tsv" 2>/dev/null || echo 0)
 echo "collectors started on $H (ports $PORTS, ${INTERVAL}s). 3초 후 prom 줄 수: $n"
 [ "$n" -eq 0 ] && echo "경고: prom 수집이 비어 있습니다. node_collect.sh verify 로 확인하세요."
