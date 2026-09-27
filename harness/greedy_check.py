@@ -8,7 +8,7 @@
   greedy_check.py run --base-url http://127.0.0.1:8000 --model M --sharegpt FILE --out a.json [--repeat 2]
   greedy_check.py compare a.json b.json
 """
-import argparse, json, sys, time, urllib.request
+import argparse, json, re, sys, time, urllib.request
 
 SHORT = [
     "The capital of France is",
@@ -61,17 +61,29 @@ def run(a):
     print(f"기록 {a.out}: 프롬프트 {len(prompts)}개 × {a.repeat}회, 같은 서버 반복 일치={same}")
     return 0 if same else 2
 
+def _words(t):
+    return {w.lower() for w in re.findall(r"[A-Za-z]{5,}", t)}
+
 def compare(a):
+    """기본: 모든 프롬프트 바이트 단위 일치.
+    --exact-under N --min-overlap X: N자 미만 프롬프트는 바이트 일치, 그 이상은 기준 출력의 핵심 단어(5자 이상 영단어)를
+    X 이상 공유하면 통과. 긴 프롬프트는 경로마다 마지막 프롬프트 토큰 계산이 달라 동률 근처에서 단어가 갈리므로
+    바이트 일치가 과도하게 엄격하다. 문턱은 2026-09-27 E6에서 보정: 같은 프롬프트 0.58 이상, 다른 프롬프트 0.17 이하."""
     x = json.load(open(a.a))["runs"][0]; y = json.load(open(a.b))["runs"][0]
-    bad = []
+    exact = sum(1 for p, q in zip(x, y) if p["text"] == q["text"])
+    fails = []
     for p, q in zip(x, y):
-        if p["text"] != q["text"]:
-            k = next((j for j, (c1, c2) in enumerate(zip(p["text"], q["text"])) if c1 != c2), min(len(p["text"]), len(q["text"])))
-            bad.append((p["i"], p["prompt_chars"], k))
-    print(f"비교 {a.a} ↔ {a.b}: {len(x) - len(bad)}/{len(x)} 일치")
-    for i, n, k in bad:
-        print(f"  불일치 프롬프트 {i} (길이 {n}자), {k}번째 글자부터 다름")
-    return 0 if not bad else 1
+        if p["text"] == q["text"]:
+            continue
+        k = next((j for j, (c1, c2) in enumerate(zip(p["text"], q["text"])) if c1 != c2), min(len(p["text"]), len(q["text"])))
+        ref = _words(p["text"]); ov = len(_words(q["text"]) & ref) / max(1, len(ref))
+        relaxed = a.exact_under is not None and p["prompt_chars"] >= a.exact_under and ov >= a.min_overlap
+        print(f"  불일치 프롬프트 {p['i']} (길이 {p['prompt_chars']}자), {k}번째 글자부터 다름, 핵심 단어 겹침 {ov:.2f}" + (" → 완화 기준 통과" if relaxed else ""))
+        if not relaxed:
+            fails.append(p["i"])
+    mode = "바이트 일치" if a.exact_under is None else f"{a.exact_under}자 미만 바이트 일치 + 긴 프롬프트 겹침 ≥ {a.min_overlap}"
+    print(f"비교 {a.a} ↔ {a.b}: 바이트 일치 {exact}/{len(x)}, 판정 기준[{mode}] {'통과' if not fails else '실패'}")
+    return 0 if not fails else 1
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); sp = ap.add_subparsers(dest="cmd", required=True)
@@ -80,5 +92,6 @@ if __name__ == "__main__":
     r.add_argument("--max-tokens", type=int, default=64)
     r.add_argument("--api", choices=["chat", "completions"], default="chat")
     c = sp.add_parser("compare"); c.add_argument("a"); c.add_argument("b")
+    c.add_argument("--exact-under", type=int, default=None); c.add_argument("--min-overlap", type=float, default=0.4)
     a = ap.parse_args()
     sys.exit(run(a) if a.cmd == "run" else compare(a))
