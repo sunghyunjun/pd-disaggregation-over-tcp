@@ -831,3 +831,17 @@ PRO 6000, 31B FP8, max-model-len 16,384 고정. util만 바꿔 KV 용량을 8.6�
 
 **마찰 #17 · terraform apply가 403으로 실패하지만 인스턴스는 정상 생성됨**
 `infra/up.sh g7e_2x 2 --pg --ws e4`가 두 인스턴스 모두에 대해 `UnauthorizedOperation: ec2:DescribeInstanceAttribute`로 종료됐다. 생성 자체는 성공했고 `terraform state list`에도 8개 리소스가 모두 들어 있었다 — 실패한 것은 생성 **직후의 속성 재조회**(instanceInitiatedShutdownBehavior)뿐이다. 영향은 `terraform output`이 실행되지 않아 `last-outputs-e4.json`이 비는 것 하나다. 우회: 인스턴스 IP를 AWS CLI로 직접 읽고, 정리는 `infra/down.sh --ws e4`가 그대로 처리한다(상태가 완전하므로). 근본 해결은 terraform-admin에 `ec2:DescribeInstanceAttribute` 부여.
+
+### **사다리 측정을 `vllm bench sweep serve`로 전환 (하네스 변경, 2026-09-27)**
+직접 만든 루프(`for r in ...; do run_bench.sh ...`)를 상류 도구로 교체했다. 얻는 것과 유지한 것을 나눠 적는다.
+| 상류가 대신 해 주는 것 | 우리가 유지한 것 |
+|---|---|
+| 지점 사이 캐시 리셋(마찰 #11의 원인 제거) | 노드별 프로메테우스 수집기 `node_collect.sh`(sweep은 서버 측 계측을 하지 않는다) |
+| `--num-runs`로 같은 지점 반복, `--resume`으로 중단 복구 | SLO 판정·TBT 파생·비용 계산(`analyze.py`, `table.py`) |
+| 서버 한 번 기동 → 사다리 전 지점 실행 | 분리 구성의 서버 생명주기(`serve_pair.sh`) |
+
+새 파일 세 개.
+- `harness/serve_pair.sh` — sweep의 `--serve-cmd`로 쓰는 **전경** 래퍼. 원격 prefill·decode 컨테이너를 띄우고 health 200을 기다린 뒤 토이 프록시를 `exec`으로 전경에 붙인다. sweep은 이 프로세스를 프로세스 그룹째 SIGKILL하므로 trap을 신뢰하지 않고, 컨테이너 정리는 **시작 시점**에 `docker rm -f`로 한다. `MODE=solo`면 단일 노드를 `rr_proxy.py`로 노출한다(베이스라인 사다리도 같은 경로로).
+- `harness/sweep_ladder.sh` — 요청률 목록을 bench-params JSON으로 만들어 `vllm bench sweep serve`를 부른다. 지점마다 `num_prompts = max(MIN_PROMPTS, rate × POINT_SEC)`와 **서로 다른 시드**를 넣는다(시드 고정은 접두어 재사용을 부른다). `--after-bench-cmd`로 우리 `reset_caches.sh`를 꽂는다 — 상류의 기본 리셋은 `serve_cmd[0]`이 `vllm`으로 끝나야 동작하므로 래퍼에서는 쓸 수 없다.
+- `harness/sweep_to_runs.py` — `BENCH--r*/run=N.json`을 기존 배치 `results/<RUN_ID>/{result,bench}.json`으로 변환하는 어댑터. 실제 과거 `bench.json`으로 왕복 검증했다: 변환 → `aggregate.py` → `attain_chat 1.0`, `tbt_p99_ms 10.61`까지 그대로 나온다. 즉 **기존 집계·표·비용 계산을 하나도 고치지 않고** 새 측정 경로를 붙일 수 있다.
+- `--dry-run`으로 명령 조립을 확인했다(서버 기동 없음). 걸림돌 하나: `--resume`은 실험 폴더가 **이미 있을 때만** 유효하고 없으면 `ValueError`로 죽는다 → 폴더 존재 여부로 조건부 전달.
