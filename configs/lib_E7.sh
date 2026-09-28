@@ -64,9 +64,10 @@ pt(){ local WL=$1 R=$2 REP=$3; shift 3; local t0; t0=$(date -u +%s)
 rep3(){ local k; for k in 0 1 2; do pt "$@" $k; done; }                 # rep3 워크로드 요청률 → 세 번
 pt3(){ local WL=$1 R=$2; shift 2; local k; for k in 0 1 2; do pt $WL $R $k "$@"; done; }
 
-# 실제 트레이스 재생(캐시 끔). MULT 0.001 = 실시간, 작을수록 빠르게
+# 실제 트레이스 재생(캐시 끔). MULT 0.001 = 실시간, 작을수록 빠르게. 요청 수는 이전 세션(B·D·E2)과 같은 앞쪽 600개
+# (NUM_PROMPTS를 비우면 0이 넘어가 vLLM 0.30.0에서 빈 목록 IndexError — 9/28 E7b 첫 시도에서 확인)
 trace1(){ local MULT=$1 REP=$2; local t0; t0=$(date -u +%s); log "  $CFG azure_conv ×$MULT #$REP"
-  SEED=$((4242+1000*REP)) TRACE_SEC_MULT=$MULT timeout 1500 harness/run_bench.sh E7 "$CFG" N0 azure_conv self 2>&1 \
+  SEED=$((4242+1000*REP)) TRACE_SEC_MULT=$MULT NUM_PROMPTS=600 timeout 1500 harness/run_bench.sh E7 "$CFG" N0 azure_conv self 2>&1 \
     | grep -E "Successful requests|Median TTFT|wrote|rror" | grep -vE "Triton|_C_AVX512|^\s*Error [1-9]" | sed 's/^/    /'
   for h in $DECODERS; do rsh $h "docker logs vllm --since $t0 2>&1 | grep 'KV Transfer metrics'" > results/xfer_E7/${CFG}_trace_n${REP}_${h##*.}.log 2>/dev/null; done; }
 trace3(){ local k; for k in 0 1 2; do trace1 $1 $k; done; }
