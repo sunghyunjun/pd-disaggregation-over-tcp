@@ -208,7 +208,7 @@ def figures(res, cache, out):
     import make_figures as mf  # shared style
     INK, INK2 = mf.INK, mf.INK2
 
-    cmap = LinearSegmentedColormap.from_list("div", ["#1f5fae", "#8fb4e3", "#e9e8e4", "#f2a67f", "#c4481c"])
+    cmap = LinearSegmentedColormap.from_list("div", ["#1d4f91", "#8fb3dd", "#ebe9e4", "#eeb08c", "#c8501e"])
     keys = ["26n_4k_g7", "26f_4k_e2", "26b_4k", "26n_16k_g7", "26f_chat_e2", "26b_chat", "31b_chat", "31b_4k", "26f_16k_e2"]
     fig, axes = plt.subplots(3, 3, figsize=(7.2, 7.4), sharex=True, sharey=True)
     summary = {}
@@ -246,8 +246,8 @@ def figures(res, cache, out):
     plt.close(fig)
 
     # frontier: tok/s per GPU vs p90 TTFT and p90 of per-request max ITL
-    colors = {"Replicas (2)": mf.S1, "Replicas (3)": mf.S1, "1P1D": mf.S2, "1P2D": mf.S3, "2P1D": mf.S4}
-    styles = {"Replicas (3)": "--"}
+    colors = {"Replicas (2)": mf.S1, "Replicas (3)": mf.S5, "1P1D": mf.S2, "1P2D": mf.S3, "2P1D": mf.S4}
+    styles = {"Replicas (3)": mf.LS3, "1P2D": mf.LS3, "2P1D": mf.LS3B}
     marks = {"Replicas (2)": "o", "Replicas (3)": "o", "1P1D": "s", "1P2D": "^", "2P1D": "D"}
     fkeys = ["26b_4k", "26b_chat", "31b_chat", "31b_4k"]
     fig, axes = plt.subplots(2, 4, figsize=(8.4, 4.6))

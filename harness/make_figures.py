@@ -17,7 +17,11 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 INK, INK2, GRID = "#0b0b0b", "#52514e", "#dcdcd6"
-S1, S2, S3, S4, S5 = "#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7", "#e34948"
+# Deuteranomaly-safe: two hue families (blue = replicas, orange = disaggregated), variants by
+# lightness + marker + line style. Solid = two nodes, dashed / dash-dot = three nodes.
+S1, S2, S3, S4, S5 = "#1d4f91", "#c8501e", "#e9a23b", "#6b3410", "#6aa8e0"
+LS3 = (0, (6, 2.5))            # dashed, long enough to read in a legend
+LS3B = (0, (7, 2, 1.5, 2))     # dash-dot
 NEUTRAL = "#9a9a94"
 GPU_H = 3.363  # g7e.2xlarge on-demand $/h, us-east-1 (RESULTS.md E5)
 
@@ -27,7 +31,8 @@ plt.rcParams.update({
     "text.color": INK, "axes.labelcolor": INK, "axes.edgecolor": INK2,
     "xtick.color": INK2, "ytick.color": INK2, "axes.grid": True, "grid.color": GRID,
     "grid.linewidth": 0.6, "axes.spines.top": False, "axes.spines.right": False,
-    "axes.axisbelow": True, "lines.linewidth": 2, "lines.markersize": 5,
+    "axes.axisbelow": True, "lines.linewidth": 2.2, "lines.markersize": 5.5,
+    "legend.handlelength": 3.4, "legend.handletextpad": 0.6,
     "svg.fonttype": "none", "pdf.fonttype": 42, "legend.frameon": False,
     "axes.titleweight": "bold", "axes.titlelocation": "left",
 })
@@ -254,13 +259,13 @@ def f06(rows, out):
 
 def f07(rows, out):
     fig, ax = plt.subplots(figsize=(6.2, 2.9)); meta = {}
-    series = [("E1", "l40s_26b_fp8_kvmatch", S3, "^", "L40S (g6e), KV 226k"),
-              ("E1", "pro6000_26b_fp8_kvmax", S4, "D", "PRO 6000 (g7e), KV max"),
+    series = [("E1", "l40s_26b_fp8_kvmatch", S2, "^", "L40S (g6e), KV 226k"),
+              ("E1", "pro6000_26b_fp8_kvmax", S5, "D", "PRO 6000 (g7e), KV max"),
               ("E1", "pro6000_26b_fp8_kvmatch", S1, "o", "PRO 6000 (g7e), KV matched, E1"),
               ("E7", "26F_single_kvmatch", S1, "o", "PRO 6000 (g7e), KV matched, E7 repeats")]
     for stg, cfg, c, m, lab in series:
         g = by_rate(pick(rows, stg, cfg, "sharegpt"))
-        meta[cfg] = range_series(ax, g, 1, c, m, lab, "--" if cfg.startswith("pro6000_26b_fp8_kvmatch") else "-")
+        meta[cfg] = range_series(ax, g, 1, c, m, lab, LS3 if cfg.startswith("pro6000_26b_fp8_kvmatch") else "-")
     slo_line(ax); ax.set_ylim(-0.03, 1.05)
     ax.set_xlabel("ShareGPT request rate, one GPU (req/s)"); ax.set_ylabel("Chat SLO attainment")
     ax.set_title("Single node, 26B FP8: supported load 1 vs 16 req/s at equal KV")
@@ -270,9 +275,9 @@ def f07(rows, out):
 
 def f08(rows, out):
     fig, (a, b) = plt.subplots(1, 2, figsize=(6.6, 3.0), sharey=True); meta = {}
-    cfgs = [("26_B2", 2, S1, "o", "-", "Replicas (2)"), ("26_B3", 3, S1, "o", "--", "Replicas (3)"),
-            ("26_1P1D", 2, S2, "s", "-", "1P1D"), ("26_1P2D", 3, S3, "^", "-", "1P2D"),
-            ("26_2P1D", 3, S4, "D", "-", "2P1D")]
+    cfgs = [("26_B2", 2, S1, "o", "-", "Replicas (2)"), ("26_B3", 3, S5, "o", LS3, "Replicas (3)"),
+            ("26_1P1D", 2, S2, "s", "-", "1P1D"), ("26_1P2D", 3, S3, "^", LS3, "1P2D"),
+            ("26_2P1D", 3, S4, "D", LS3B, "2P1D")]
     for cfg, n, c, m, ls, lab in cfgs:
         g = by_rate(pick(rows, ("E5", "E7"), cfg, "random", inlen=4096))
         meta["4k_" + cfg] = range_series(a, g, n, c, m, lab, ls)
@@ -296,9 +301,9 @@ def f09(rows, out):
     fig, (a, b) = plt.subplots(1, 2, figsize=(6.6, 3.0), sharey=True); meta = {}
     for cfg, n, c, m, ls, lab in (("31_B2", 2, S1, "o", "-", "Replicas (2)"), ("31_1P1D", 2, S2, "s", "-", "1P1D")):
         meta["chat_" + cfg] = range_series(a, by_rate(pick(rows, ("E5", "E7"), cfg, "sharegpt")), n, c, m, lab, ls)
-    for cfg, n, c, m, ls, lab in (("31_B2", 2, S1, "o", "-", "Replicas (2)"), ("31_B3", 3, S1, "o", "--", "Replicas (3)"),
-                                  ("31_1P1D", 2, S2, "s", "-", "1P1D"), ("31_1P2D", 3, S3, "^", "-", "1P2D"),
-                                  ("31_2P1D", 3, S4, "D", "-", "2P1D")):
+    for cfg, n, c, m, ls, lab in (("31_B2", 2, S1, "o", "-", "Replicas (2)"), ("31_B3", 3, S5, "o", LS3, "Replicas (3)"),
+                                  ("31_1P1D", 2, S2, "s", "-", "1P1D"), ("31_1P2D", 3, S3, "^", LS3, "1P2D"),
+                                  ("31_2P1D", 3, S4, "D", LS3B, "2P1D")):
         g = by_rate(pick(rows, ("E5", "E7"), cfg, "random", inlen=4096))
         if g:
             meta["4k_" + cfg] = range_series(b, g, n, c, m, lab, ls)
@@ -339,7 +344,7 @@ def f10(rows, out):
 
 
 def f11(rows, out):
-    cfgs = [("26_B2", "26B\nRep 2", S1), ("26_1P1D", "26B\n1P1D", S2), ("26_B3", "26B\nRep 3", S1),
+    cfgs = [("26_B2", "26B\nRep 2", S1), ("26_1P1D", "26B\n1P1D", S2), ("26_B3", "26B\nRep 3", S5),
             ("26_1P2D", "26B\n1P2D", S3), ("26_2P1D", "26B\n2P1D", S4), ("31_B2", "31B\nRep 2", S1),
             ("31_1P1D", "31B\n1P1D", S2)]
     fig, (a, b) = plt.subplots(1, 2, figsize=(6.8, 2.8)); meta = []
