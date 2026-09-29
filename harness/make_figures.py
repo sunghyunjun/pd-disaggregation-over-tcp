@@ -191,10 +191,10 @@ def f03(rows, out):
 
 def f04(rows, out):
     items = [  # label, single, transfer, residual, predicted
-        ("26B FP8 4K @0.5, no PG", 158, 324, 0, None),
-        ("26B FP8 4K @0.5, PG", 158, 165, 28, None),
-        ("26B NVFP4 4K @1, PG", 130, 84, 53, 235),
-        ("31B NVFP4 4K @0.25, PG", 483, 283, 87, 820),
+        ("26B FP8 · 4K · 0.5 req/s\nno placement group", 158, 324, 0, None),
+        ("26B FP8 · 4K · 0.5 req/s\nplacement group", 158, 165, 28, None),
+        ("26B NVFP4 · 4K · 1 req/s\nplacement group", 130, 84, 53, 235),
+        ("31B NVFP4 · 4K · 0.25 req/s\nplacement group", 483, 283, 87, 820),
     ]
     fig, ax = plt.subplots(figsize=(6.2, 2.6))
     ys = list(range(len(items)))[::-1]
@@ -211,7 +211,7 @@ def f04(rows, out):
                        plt.Rectangle((0, 0), 1, 1, color="#f4b79c"), Line2D([0], [0], color=INK, lw=1.6)],
               labels=["Single-node TTFT", "KV transfer", "Residual", "Predicted before run"],
               loc="upper left", bbox_to_anchor=(0, -0.22), ncol=4, fontsize=7.5)
-    ax.set_title("The disaggregation TTFT penalty is almost all KV transfer")
+    ax.set_title("The added TTFT under disaggregation is almost all KV transfer")
     save(fig, out, "fig04_ttft_decomposition", {"quoted": "RESULTS.md E4-1, E5 formula check",
                                                 "items": items})
 
@@ -238,7 +238,7 @@ def f06(rows, out):
         ("g7 · PRO 4500\n26B NVFP4", ("B", "B2", "4096", "1"), ("B", "P1", "4096", "1")),
         ("g6e · L40S\n26B FP8", ("E3", "B2", "4096", "1"), ("E3", "P1tuned", "4096", "1")),
         ("g7e · PRO 6000\n26B FP8", ("E2", "B2", "4096", "1"), ("E2", "P1tuned", "4096", "1")),
-        ("g7e + PG\n26B NVFP4", ("E7", "26_B2", "4096", "1"), ("E7", "26_1P1D", "4096", "1")),
+        ("g7e · PRO 6000\n26B NVFP4\n+ placement group", ("E7", "26_B2", "4096", "1"), ("E7", "26_1P1D", "4096", "1")),
     ]
 
     def one(stage, cfg, inl, rate):
@@ -262,15 +262,15 @@ def f07(rows, out):
     fig, ax = plt.subplots(figsize=(6.2, 2.9)); meta = {}
     series = [("E1", "l40s_26b_fp8_kvmatch", S2, "^", "L40S (g6e), KV 226k"),
               ("E1", "pro6000_26b_fp8_kvmax", S5, "D", "PRO 6000 (g7e), KV max"),
-              ("E1", "pro6000_26b_fp8_kvmatch", S1, "o", "PRO 6000 (g7e), KV matched, E1"),
-              ("E7", "26F_single_kvmatch", S1, "o", "PRO 6000 (g7e), KV matched, E7 repeats")]
+              ("E1", "pro6000_26b_fp8_kvmatch", S1, "o", "PRO 6000 (g7e), KV matched, first day"),
+              ("E7", "26F_single_kvmatch", S1, "o", "PRO 6000 (g7e), KV matched, 3 repeats two days later")]
     for stg, cfg, c, m, lab in series:
         g = by_rate(pick(rows, stg, cfg, "sharegpt"))
         meta[cfg] = range_series(ax, g, 1, c, m, lab, LS3 if cfg.startswith("pro6000_26b_fp8_kvmatch") else "-")
     slo_line(ax); ax.set_ylim(-0.03, 1.05)
     ax.set_xlabel("ShareGPT request rate, one GPU (req/s)"); ax.set_ylabel("Chat SLO attainment")
     ax.set_title("Single node, 26B FP8: supported load 1 vs 16 req/s at equal KV")
-    ax.legend(loc="lower left")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=7.5)
     save(fig, out, "fig07_gpu_kv", meta)
 
 
@@ -322,7 +322,7 @@ def f09(rows, out):
 
 def f10(rows, out):
     prec = [("NVFP4", "26"), ("FP8", "26F"), ("BF16", "26H")]
-    points = [("4K @1 req/s", "random", "1"), ("4K @2 req/s", "random", "2"), ("ShareGPT @16", "sharegpt", "16")]
+    points = [("4K input, 1 req/s", "random", "1"), ("4K input, 2 req/s", "random", "2"), ("ShareGPT, 16 req/s", "sharegpt", "16")]
     fig, axes = plt.subplots(1, 3, figsize=(6.6, 2.6), sharey=True); w = 0.36; meta = []
     for ax, (t, wl, rate) in zip(axes, points):
         for i, (pl, pre) in enumerate(prec):
@@ -396,7 +396,7 @@ def f12(rows, out):
             rate, rs = s
             cost = GPU_H * n / (st.mean(x["goodput_chat_tok_s"] for x in rs) * 3600) * 1e6
             ax.bar(i + off, cost, w, color=c)
-            ax.text(i + off, cost * 1.08, f"${cost:.2f}\n@{rate:g}", ha="center", fontsize=6.8)
+            ax.text(i + off, cost * 1.08, f"${cost:.2f}\n{rate:g} req/s", ha="center", fontsize=6.8)
             row[key] = {"config": cfg, "rate": rate, "cost_per_1M": round(cost, 3), "n": len(rs)}
         meta.append(row)
     ax.set_yscale("log"); ax.set_ylim(0.1, 20); ax.set_xlim(-0.6, len(groups) - 0.4)
@@ -426,12 +426,17 @@ def f13(rows, out):
             ax.scatter([e5[k]], [y], s=26, marker="D", facecolors="white", edgecolors=S2, zorder=4, linewidths=1.2)
         meta.append({"point": k, "e7": vals, "e5": e5.get(k)})
     wl = {"random": "4K", "sharegpt": "chat"}
+    def nice(c):
+        m = {"26": "26B NVFP4", "26F": "26B FP8", "26H": "26B BF16", "31": "31B NVFP4"}
+        mod, _, cf = c.partition("_")
+        cf = {"B2": "replicas (2)", "B3": "replicas (3)", "single_kvmatch": "single node, KV matched"}.get(cf, cf)
+        return f"{m.get(mod, mod)} {cf}"
     ax.set_yticks(range(len(keys)))
-    ax.set_yticklabels([f"{k[0].replace('_', ' ')} · {wl[k[1]]} @{k[2]}" for k in keys], fontsize=7)
+    ax.set_yticklabels([f"{nice(k[0])} · {wl[k[1]]} · {k[2]} req/s" for k in keys], fontsize=7)
     ax.axvline(0.9, color=INK2, lw=1, ls=(0, (4, 3))); ax.set_xlim(0.3, 1.02)
     ax.set_xlabel("Chat SLO attainment"); ax.grid(axis="y", visible=False)
     ax.legend(handles=[Line2D([0], [0], marker="o", color=S1, lw=0), Line2D([0], [0], marker="D", mfc="white", mec=S2, lw=0)],
-              labels=["E7 repeat (seed varied)", "E5 single run, previous day"], loc="lower right")
+              labels=["Repeat (seed varied)", "Single run, previous day"], loc="lower right")
     ax.set_title("Repeats only disagree near the 0.9 threshold (shaded 0.85–0.95)")
     save(fig, out, "fig13_repeatability", meta)
 

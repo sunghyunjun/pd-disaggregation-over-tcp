@@ -21,7 +21,7 @@
  ],
  "groups": {
   "26b_4k": {
-   "title": "26B NVFP4 · 4K · g7e PG",
+   "title": "26B NVFP4 · 4K\ng7e, placement group",
    "members": {
     "Replicas (2)": {
      "rates": [
@@ -1305,7 +1305,7 @@
    }
   },
   "26b_chat": {
-   "title": "26B NVFP4 · ShareGPT · g7e PG",
+   "title": "26B NVFP4 · ShareGPT\ng7e, placement group",
    "members": {
     "Replicas (2)": {
      "rates": [
@@ -2570,7 +2570,7 @@
    }
   },
   "31b_chat": {
-   "title": "31B NVFP4 · ShareGPT · g7e PG",
+   "title": "31B NVFP4 · ShareGPT\ng7e, placement group",
    "members": {
     "Replicas (2)": {
      "rates": [
@@ -3083,7 +3083,7 @@
    }
   },
   "31b_4k": {
-   "title": "31B NVFP4 · 4K · g7e PG",
+   "title": "31B NVFP4 · 4K\ng7e, placement group",
    "members": {
     "Replicas (2)": {
      "rates": [
@@ -4358,7 +4358,7 @@
    }
   },
   "26f_chat_e2": {
-   "title": "26B FP8 · ShareGPT · g7e (E2)",
+   "title": "26B FP8 · ShareGPT\ng7e",
    "members": {
     "Replicas (2)": {
      "rates": [
@@ -4875,7 +4875,7 @@
    }
   },
   "26f_4k_e2": {
-   "title": "26B FP8 · 4K · g7e (E2)",
+   "title": "26B FP8 · 4K\ng7e",
    "members": {
     "Replicas (2)": {
      "rates": [
@@ -5386,7 +5386,7 @@
    }
   },
   "26f_16k_e2": {
-   "title": "26B FP8 · 16K · g7e (E2)",
+   "title": "26B FP8 · 16K\ng7e",
    "members": {
     "Replicas (2)": {
      "rates": [
@@ -5897,7 +5897,7 @@
    }
   },
   "26n_4k_g7": {
-   "title": "26B NVFP4 · 4K · g7 (B)",
+   "title": "26B NVFP4 · 4K\ng7",
    "members": {
     "Replicas (2)": {
      "rates": [
@@ -6410,7 +6410,7 @@
    }
   },
   "26n_16k_g7": {
-   "title": "26B NVFP4 · 16K · g7 (B)",
+   "title": "26B NVFP4 · 16K\ng7",
    "members": {
     "Replicas (2)": {
      "rates": [
@@ -6925,7 +6925,7 @@
  },
  "ratio": {
   "26n_4k_g7": {
-   "title": "26B NVFP4 · 4K · g7 (B)",
+   "title": "26B NVFP4 · 4K\ng7",
    "cells": [
     [
      "–",
@@ -7011,7 +7011,7 @@
    "at_1s_50ms": "D"
   },
   "26f_4k_e2": {
-   "title": "26B FP8 · 4K · g7e (E2)",
+   "title": "26B FP8 · 4K\ng7e",
    "cells": [
     [
      "–",
@@ -7097,7 +7097,7 @@
    "at_1s_50ms": "D"
   },
   "26b_4k": {
-   "title": "26B NVFP4 · 4K · g7e PG",
+   "title": "26B NVFP4 · 4K\ng7e, placement group",
    "cells": [
     [
      "–",
@@ -7183,7 +7183,7 @@
    "at_1s_50ms": "3.0"
   },
   "26n_16k_g7": {
-   "title": "26B NVFP4 · 16K · g7 (B)",
+   "title": "26B NVFP4 · 16K\ng7",
    "cells": [
     [
      "–",
@@ -7269,7 +7269,7 @@
    "at_1s_50ms": "–"
   },
   "26f_chat_e2": {
-   "title": "26B FP8 · ShareGPT · g7e (E2)",
+   "title": "26B FP8 · ShareGPT\ng7e",
    "cells": [
     [
      "R",
@@ -7355,7 +7355,7 @@
    "at_1s_50ms": "≤0.6"
   },
   "26b_chat": {
-   "title": "26B NVFP4 · ShareGPT · g7e PG",
+   "title": "26B NVFP4 · ShareGPT\ng7e, placement group",
    "cells": [
     [
      "R",
@@ -7441,7 +7441,7 @@
    "at_1s_50ms": "?"
   },
   "31b_chat": {
-   "title": "31B NVFP4 · ShareGPT · g7e PG",
+   "title": "31B NVFP4 · ShareGPT\ng7e, placement group",
    "cells": [
     [
      "–",
@@ -7527,7 +7527,7 @@
    "at_1s_50ms": "D"
   },
   "31b_4k": {
-   "title": "31B NVFP4 · 4K · g7e PG",
+   "title": "31B NVFP4 · 4K\ng7e, placement group",
    "cells": [
     [
      "–",
@@ -7613,7 +7613,7 @@
    "at_1s_50ms": "–"
   },
   "26f_16k_e2": {
-   "title": "26B FP8 · 16K · g7e (E2)",
+   "title": "26B FP8 · 16K\ng7e",
    "cells": [
     [
      "–",

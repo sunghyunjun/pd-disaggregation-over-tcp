@@ -75,40 +75,40 @@ def q(xs, p):
 
 # comparison groups: (key, title, [(label, stages, config, workload, inlen, gpus)])
 GROUPS = [
-    ("26b_4k", "26B NVFP4 · 4K · g7e PG",
+    ("26b_4k", "26B NVFP4 · 4K\ng7e, placement group",
      [("Replicas (2)", ("E5", "E7"), "26_B2", "random", "4096", 2),
       ("Replicas (3)", ("E5", "E7"), "26_B3", "random", "4096", 3),
       ("1P1D", ("E5", "E7"), "26_1P1D", "random", "4096", 2),
       ("1P2D", ("E5", "E7"), "26_1P2D", "random", "4096", 3),
       ("2P1D", ("E5", "E7"), "26_2P1D", "random", "4096", 3)]),
-    ("26b_chat", "26B NVFP4 · ShareGPT · g7e PG",
+    ("26b_chat", "26B NVFP4 · ShareGPT\ng7e, placement group",
      [("Replicas (2)", ("E5", "E7"), "26_B2", "sharegpt", None, 2),
       ("Replicas (3)", ("E5", "E7"), "26_B3", "sharegpt", None, 3),
       ("1P1D", ("E5", "E7"), "26_1P1D", "sharegpt", None, 2),
       ("1P2D", ("E5", "E7"), "26_1P2D", "sharegpt", None, 3),
       ("2P1D", ("E5", "E7"), "26_2P1D", "sharegpt", None, 3)]),
-    ("31b_chat", "31B NVFP4 · ShareGPT · g7e PG",
+    ("31b_chat", "31B NVFP4 · ShareGPT\ng7e, placement group",
      [("Replicas (2)", ("E5", "E7"), "31_B2", "sharegpt", None, 2),
       ("1P1D", ("E5", "E7"), "31_1P1D", "sharegpt", None, 2)]),
-    ("31b_4k", "31B NVFP4 · 4K · g7e PG",
+    ("31b_4k", "31B NVFP4 · 4K\ng7e, placement group",
      [("Replicas (2)", ("E5",), "31_B2", "random", "4096", 2),
       ("Replicas (3)", ("E5",), "31_B3", "random", "4096", 3),
       ("1P1D", ("E5", "E6", "E7"), "31_1P1D", "random", "4096", 2),
       ("1P2D", ("E5",), "31_1P2D", "random", "4096", 3),
       ("2P1D", ("E5", "E7"), "31_2P1D", "random", "4096", 3)]),
-    ("26f_chat_e2", "26B FP8 · ShareGPT · g7e (E2)",
+    ("26f_chat_e2", "26B FP8 · ShareGPT\ng7e",
      [("Replicas (2)", ("E2",), "B2", "sharegpt", None, 2),
       ("1P1D", ("E2",), "P1tuned", "sharegpt", None, 2)]),
-    ("26f_4k_e2", "26B FP8 · 4K · g7e (E2)",
+    ("26f_4k_e2", "26B FP8 · 4K\ng7e",
      [("Replicas (2)", ("E2",), "B2", "random", "4096", 2),
       ("1P1D", ("E2",), "P1tuned", "random", "4096", 2)]),
-    ("26f_16k_e2", "26B FP8 · 16K · g7e (E2)",
+    ("26f_16k_e2", "26B FP8 · 16K\ng7e",
      [("Replicas (2)", ("E2",), "B2", "random", "16384", 2),
       ("1P1D", ("E2",), "P1tuned", "random", "16384", 2)]),
-    ("26n_4k_g7", "26B NVFP4 · 4K · g7 (B)",
+    ("26n_4k_g7", "26B NVFP4 · 4K\ng7",
      [("Replicas (2)", ("B",), "B2", "random", "4096", 2),
       ("1P1D", ("B",), "P1", "random", "4096", 2)]),
-    ("26n_16k_g7", "26B NVFP4 · 16K · g7 (B)",
+    ("26n_16k_g7", "26B NVFP4 · 16K\ng7",
      [("Replicas (2)", ("B",), "B2", "random", "16384", 2),
       ("1P1D", ("B",), "P1", "random", "16384", 2)]),
 ]
@@ -210,7 +210,7 @@ def figures(res, cache, out):
 
     cmap = LinearSegmentedColormap.from_list("div", ["#1d4f91", "#8fb3dd", "#ebe9e4", "#eeb08c", "#c8501e"])
     keys = ["26n_4k_g7", "26f_4k_e2", "26b_4k", "26n_16k_g7", "26f_chat_e2", "26b_chat", "31b_chat", "31b_4k", "26f_16k_e2"]
-    fig, axes = plt.subplots(3, 3, figsize=(7.2, 7.4), sharex=True, sharey=True)
+    fig, axes = plt.subplots(3, 3, figsize=(7.2, 7.9), sharex=True, sharey=True)
     summary = {}
     for ax, key in zip(axes.flat, keys):
         g = res[key]; rep, pd = best_of(g, False), best_of(g, True)
@@ -274,7 +274,7 @@ def figures(res, cache, out):
                 for p in pts:
                     if p[3]:
                         ax.plot([p[0]], [p[idx]], marker=marks[lab], mfc="white", mec=colors[lab], ms=6, ls="none")
-        axes[0][col].set_title(g[1].replace(" · g7e PG", ""), fontsize=7.8, loc="left")
+        axes[0][col].set_title(g[1].split("\n")[0], fontsize=7.8, loc="left")
         for row in (0, 1):
             axes[row][col].set_yscale("log")
             axes[row][col].tick_params(labelsize=6.5)

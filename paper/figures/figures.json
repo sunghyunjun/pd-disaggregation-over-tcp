@@ -60,28 +60,28 @@
   "quoted": "RESULTS.md E4-1, E5 formula check",
   "items": [
    [
-    "26B FP8 4K @0.5, no PG",
+    "26B FP8 · 4K · 0.5 req/s\nno placement group",
     158,
     324,
     0,
     null
    ],
    [
-    "26B FP8 4K @0.5, PG",
+    "26B FP8 · 4K · 0.5 req/s\nplacement group",
     158,
     165,
     28,
     null
    ],
    [
-    "26B NVFP4 4K @1, PG",
+    "26B NVFP4 · 4K · 1 req/s\nplacement group",
     130,
     84,
     53,
     235
    ],
    [
-    "31B NVFP4 4K @0.25, PG",
+    "31B NVFP4 · 4K · 0.25 req/s\nplacement group",
     483,
     283,
     87,
@@ -142,7 +142,7 @@
    "pd": 0.983
   },
   {
-   "group": "g7e + PG 26B NVFP4",
+   "group": "g7e · PRO 6000 26B NVFP4 + placement group",
    "replicas": 0.972,
    "pd": 1.0
   }
@@ -832,55 +832,55 @@
  },
  "fig10_quantization": [
   {
-   "point": "4K @1 req/s",
+   "point": "4K input, 1 req/s",
    "precision": "NVFP4",
    "replicas": 0.972,
    "pd": 1.0
   },
   {
-   "point": "4K @1 req/s",
+   "point": "4K input, 1 req/s",
    "precision": "FP8",
    "replicas": 0.133,
    "pd": 1.0
   },
   {
-   "point": "4K @1 req/s",
+   "point": "4K input, 1 req/s",
    "precision": "BF16",
    "replicas": 0.028,
    "pd": 1.0
   },
   {
-   "point": "4K @2 req/s",
+   "point": "4K input, 2 req/s",
    "precision": "NVFP4",
    "replicas": 0.945,
    "pd": 1.0
   },
   {
-   "point": "4K @2 req/s",
+   "point": "4K input, 2 req/s",
    "precision": "FP8",
    "replicas": 0.011,
    "pd": 1.0
   },
   {
-   "point": "4K @2 req/s",
+   "point": "4K input, 2 req/s",
    "precision": "BF16",
    "replicas": 0.006,
    "pd": 0.981
   },
   {
-   "point": "ShareGPT @16",
+   "point": "ShareGPT, 16 req/s",
    "precision": "NVFP4",
    "replicas": 0.9783333333333333,
    "pd": 0.9773333333333333
   },
   {
-   "point": "ShareGPT @16",
+   "point": "ShareGPT, 16 req/s",
    "precision": "FP8",
    "replicas": 0.975,
    "pd": 0.957
   },
   {
-   "point": "ShareGPT @16",
+   "point": "ShareGPT, 16 req/s",
    "precision": "BF16",
    "replicas": 0.356,
    "pd": 0.665
