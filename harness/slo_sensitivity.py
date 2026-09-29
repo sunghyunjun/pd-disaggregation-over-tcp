@@ -179,6 +179,25 @@ def best_of(g, pd):
     return out
 
 
+def classify(rep, pd, hi=1.25, lo=0.8):
+    """Plain-language verdict for one SLO cell (see figure 15 legend)."""
+    (a, ca), (b, cb) = rep, pd
+    if a <= 0 and b <= 0:
+        return "neither"
+    if a <= 0:
+        return "d_only"
+    if b <= 0:
+        return "r_only"
+    r = b / a
+    if ca and cb:
+        return "unknown"
+    if ca:  # replicas still passing at their top rate: true ratio <= r
+        return "r_better" if r <= lo else "unknown"
+    if cb:  # disaggregated still passing: true ratio >= r
+        return "d_better" if r >= hi else "unknown"
+    return "d_better" if r >= hi else ("r_better" if r <= lo else "similar")
+
+
 def cell(rep, pd):
     """-> (log2 ratio for colour or nan, label, kind)"""
     (a, ca), (b, cb) = rep, pd
@@ -237,11 +256,76 @@ def figures(res, cache, out):
     for ax in axes[:, 0]:
         ax.set_yticks(range(len(T_GRID))); ax.set_yticklabels([f"{t:g}" for t in T_GRID], fontsize=6.5)
         ax.set_ylabel("TTFT budget (s)", fontsize=7.5)
-    fig.suptitle("SLO goodput per GPU at the highest rate where every repeat reaches 0.9, disaggregated ÷ replicas\n"
+    fig.suptitle("Ratio behind figure 8: SLO goodput per GPU at the highest rate where every repeat reaches 0.9, disaggregated ÷ replicas\n"
                  "(best config of each kind). Orange: disaggregation wins. ≥/≤: one side still passing at its highest "
                  "measured rate. ?: both. D or R: only that side reaches 0.9. Box: 1 s / 50 ms.",
                  x=0.01, ha="left", fontsize=7.4, color=INK2)
     fig.tight_layout(rect=(0, 0, 1, 0.955))
+    fig.savefig(os.path.join(out, "fig17_slo_ratio.pdf"), bbox_inches="tight")
+    fig.savefig(os.path.join(out, "fig17_slo_ratio.svg"), bbox_inches="tight", transparent=True)
+    plt.close(fig)
+
+    # ---- categorical "who wins" map (main-text figure) ------------------------------------------
+    from matplotlib.colors import ListedColormap
+    from matplotlib.patches import Patch
+    cats = ["neither", "r_only", "r_better", "similar", "d_better", "d_only"]
+    ccol = ["#f6f6f3", "#1d4f91", "#9dbde3", "#dddbd4", "#f0b48f", "#c8501e"]
+    labels = {"d_only": "Only disaggregated meets the SLO", "d_better": "Disaggregated serves more (≥1.25×)",
+              "similar": "Similar (0.8–1.25×)", "r_better": "Replicas serve more (≤0.8×)",
+              "r_only": "Only replicas meet the SLO", "neither": "Neither meets the SLO",
+              "unknown": "Cannot tell: a side still passed at\nits highest measured rate"}
+    cols = ["26B NVFP4 · g7\n(before transfer tuning)", "26B FP8 · g7e", "26B NVFP4 · g7e\n+ placement group",
+            "31B NVFP4 · g7e\n+ placement group"]
+    layout = [("4K input", ["26n_4k_g7", "26f_4k_e2", "26b_4k", "31b_4k"]),
+              ("Chat (ShareGPT)", [None, "26f_chat_e2", "26b_chat", "31b_chat"]),
+              ("16K input", ["26n_16k_g7", "26f_16k_e2", None, None])]
+    fig, axes = plt.subplots(3, 4, figsize=(8.6, 7.2))
+    j50, i1 = B_GRID.index(50), T_GRID.index(1.0)
+    catmap = {}
+    for r, (rowname, keys_) in enumerate(layout):
+        first = True
+        for c, key in enumerate(keys_):
+            ax = axes[r][c]
+            if r == 0:
+                ax.set_title(cols[c], fontsize=7.6, loc="left", pad=8)
+            if key is None:
+                ax.axis("off")
+                if r == 1 and c == 0:
+                    ax.text(0.5, 0.5, "not measured\n(no usable chat data on g7)", ha="center", va="center",
+                            fontsize=7, color=INK2, transform=ax.transAxes)
+                continue
+            g = res[key]; rep, pd = best_of(g, False), best_of(g, True)
+            K = [[classify(rep[i][j], pd[i][j]) for j in range(len(B_GRID))] for i in range(len(T_GRID))]
+            catmap[key] = K
+            img = [[cats.index(k) if k in cats else cats.index("neither") for k in row] for row in K]
+            ax.imshow(img, origin="lower", aspect="auto", cmap=ListedColormap(ccol), vmin=-0.5, vmax=len(cats) - 0.5)
+            for i in range(len(T_GRID)):
+                for j in range(len(B_GRID)):
+                    if K[i][j] == "unknown":
+                        ax.add_patch(plt.Rectangle((j - .5, i - .5), 1, 1, facecolor="#ffffff", edgecolor="#b9b7ae",
+                                                   hatch="////", lw=0))
+            for x in range(len(B_GRID) + 1):
+                ax.axvline(x - .5, color="#ffffff", lw=0.6)
+            for y in range(len(T_GRID) + 1):
+                ax.axhline(y - .5, color="#ffffff", lw=0.6)
+            ax.add_patch(plt.Rectangle((j50 - .5, i1 - .5), 1, 1, fill=False, ec=INK, lw=1.6))
+            ax.grid(False)
+            ax.set_xticks(range(len(B_GRID))); ax.set_xticklabels(B_GRID, fontsize=5.8, rotation=90)
+            ax.set_yticks(range(len(T_GRID))); ax.set_yticklabels([f"{t:g}" for t in T_GRID], fontsize=5.8)
+            if first:
+                ax.set_ylabel(f"{rowname}\n\nallowed wait for\nfirst token (s)", fontsize=7.3)
+                first = False
+            ax.set_xlabel("allowed max gap between\ntokens (ms)", fontsize=6.6)
+    handles = [Patch(facecolor=ccol[cats.index(k)], edgecolor="#b9b7ae", label=labels[k])
+               for k in ["d_only", "d_better", "similar", "r_better", "r_only", "neither"]]
+    handles.append(Patch(facecolor="#ffffff", edgecolor="#b9b7ae", hatch="////", label=labels["unknown"]))
+    handles.append(Patch(facecolor="none", edgecolor=INK, lw=1.6, label="This paper's SLO (1 s, 50 ms)"))
+    axes[2][2].legend(handles=handles, loc="upper left", bbox_to_anchor=(-0.05, 1.05), fontsize=7.2,
+                      handlelength=1.6, handleheight=1.2, frameon=False,
+                      title="Per GPU, which side serves more\nSLO-meeting tokens?", title_fontsize=7.6)
+    fig.suptitle("Who wins as the SLO changes: each cell is one SLO (first-token limit × max token-gap limit)",
+                 x=0.01, ha="left", fontsize=8.2, color=INK2)
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
     fig.savefig(os.path.join(out, "fig15_slo_sensitivity.pdf"), bbox_inches="tight")
     fig.savefig(os.path.join(out, "fig15_slo_sensitivity.svg"), bbox_inches="tight", transparent=True)
     plt.close(fig)
@@ -250,8 +334,8 @@ def figures(res, cache, out):
     colors = {"Replicas (2)": mf.S1, "Replicas (3)": mf.S5, "1P1D": mf.S2, "1P2D": mf.S3, "2P1D": mf.S4}
     styles = {"Replicas (3)": mf.LS3, "1P2D": mf.LS3, "2P1D": mf.LS3B}
     marks = {"Replicas (2)": "o", "Replicas (3)": "o", "1P1D": "s", "1P2D": "^", "2P1D": "D"}
-    fkeys = ["26b_4k", "26b_chat", "31b_chat", "31b_4k"]
-    fig, axes = plt.subplots(2, 4, figsize=(8.4, 4.6))
+    fkeys = ["26b_4k", "31b_4k", "26b_chat", "31b_chat"]
+    fig, axes = plt.subplots(2, 4, figsize=(8.4, 4.8))
     front = {}
     for col, key in enumerate(fkeys):
         g = [x for x in GROUPS if x[0] == key][0]
@@ -275,7 +359,7 @@ def figures(res, cache, out):
                 for p in pts:
                     if p[3]:
                         ax.plot([p[0]], [p[idx]], marker=marks[lab], mfc="white", mec=colors[lab], ms=6, ls="none")
-        axes[0][col].set_title(g[1].split("\n")[0], fontsize=7.8, loc="left")
+        axes[0][col].set_title(g[1].split("\n")[0].split(" · ")[0], fontsize=7.8, loc="left")
         for row in (0, 1):
             axes[row][col].set_yscale("log")
             axes[row][col].yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:g}"))
@@ -291,7 +375,11 @@ def figures(res, cache, out):
     fig.legend(h, l, loc="lower center", ncol=5, fontsize=7.5, bbox_to_anchor=(0.5, -0.03))
     fig.suptitle("Latency and throughput without an SLO, g7e in a placement group (lower-right is better). "
                  "Dashed: 1 s and 50 ms. Hollow: client-limited.", x=0.01, ha="left", fontsize=8, color=INK2, y=1.0)
-    fig.tight_layout(rect=(0, 0.04, 1, 0.96))
+    fig.tight_layout(rect=(0, 0.04, 1, 0.88))
+    for c0, c1, name in ((0, 1, "4K input"), (2, 3, "Chat (ShareGPT)")):
+        b0, b1 = axes[0][c0].get_position(), axes[0][c1].get_position()
+        fig.text((b0.x0 + b1.x1) / 2, b0.y1 + 0.058, name, ha="center", fontsize=8.6, fontweight="bold", color=INK)
+        fig.add_artist(plt.Line2D([b0.x0, b1.x1], [b0.y1 + 0.05, b0.y1 + 0.05], color=INK2, lw=0.8))
     fig.savefig(os.path.join(out, "fig16_frontier.pdf"), bbox_inches="tight")
     fig.savefig(os.path.join(out, "fig16_frontier.svg"), bbox_inches="tight", transparent=True)
     plt.close(fig)

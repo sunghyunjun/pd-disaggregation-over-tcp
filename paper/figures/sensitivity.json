@@ -7878,6 +7878,121 @@
     "caution": false
    }
   ],
+  "31b_4k:Replicas (2)": [
+   {
+    "rate": 0.25,
+    "tok_s_per_gpu": 62,
+    "ttft_p90_ms": 497,
+    "maxitl_p90_ms": 232,
+    "caution": false
+   },
+   {
+    "rate": 0.5,
+    "tok_s_per_gpu": 120,
+    "ttft_p90_ms": 501,
+    "maxitl_p90_ms": 234,
+    "caution": false
+   },
+   {
+    "rate": 1.0,
+    "tok_s_per_gpu": 237,
+    "ttft_p90_ms": 511,
+    "maxitl_p90_ms": 252,
+    "caution": false
+   }
+  ],
+  "31b_4k:Replicas (3)": [
+   {
+    "rate": 0.75,
+    "tok_s_per_gpu": 119,
+    "ttft_p90_ms": 499,
+    "maxitl_p90_ms": 234,
+    "caution": false
+   },
+   {
+    "rate": 1.5,
+    "tok_s_per_gpu": 237,
+    "ttft_p90_ms": 511,
+    "maxitl_p90_ms": 250,
+    "caution": false
+   },
+   {
+    "rate": 2.5,
+    "tok_s_per_gpu": 391,
+    "ttft_p90_ms": 551,
+    "maxitl_p90_ms": 257,
+    "caution": false
+   }
+  ],
+  "31b_4k:1P1D": [
+   {
+    "rate": 0.25,
+    "tok_s_per_gpu": 62,
+    "ttft_p90_ms": 1011,
+    "maxitl_p90_ms": 36,
+    "caution": false
+   },
+   {
+    "rate": 0.5,
+    "tok_s_per_gpu": 119,
+    "ttft_p90_ms": 1310,
+    "maxitl_p90_ms": 38,
+    "caution": false
+   },
+   {
+    "rate": 1.0,
+    "tok_s_per_gpu": 236,
+    "ttft_p90_ms": 1649,
+    "maxitl_p90_ms": 43,
+    "caution": false
+   }
+  ],
+  "31b_4k:1P2D": [
+   {
+    "rate": 0.75,
+    "tok_s_per_gpu": 119,
+    "ttft_p90_ms": 1779,
+    "maxitl_p90_ms": 39,
+    "caution": false
+   },
+   {
+    "rate": 1.5,
+    "tok_s_per_gpu": 235,
+    "ttft_p90_ms": 5185,
+    "maxitl_p90_ms": 41,
+    "caution": false
+   },
+   {
+    "rate": 2.5,
+    "tok_s_per_gpu": 334,
+    "ttft_p90_ms": 62234,
+    "maxitl_p90_ms": 59,
+    "caution": false
+   }
+  ],
+  "31b_4k:2P1D": [
+   {
+    "rate": 0.75,
+    "tok_s_per_gpu": 118,
+    "ttft_p90_ms": 1002,
+    "maxitl_p90_ms": 46,
+    "caution": false
+   },
+   {
+    "rate": 1.5,
+    "tok_s_per_gpu": 233,
+    "ttft_p90_ms": 1170,
+    "maxitl_p90_ms": 66,
+    "caution": false
+   },
+   {
+    "rate": 2.5,
+    "tok_s_per_gpu": 380,
+    "ttft_p90_ms": 1660,
+    "maxitl_p90_ms": 88,
+    "caution": false
+   }
+  ],
   "26b_chat:Replicas (2)": [
    {
     "rate": 16.0,
@@ -8001,121 +8116,6 @@
     "tok_s_per_gpu": 730,
     "ttft_p90_ms": 484,
     "maxitl_p90_ms": 48,
-    "caution": false
-   }
-  ],
-  "31b_4k:Replicas (2)": [
-   {
-    "rate": 0.25,
-    "tok_s_per_gpu": 62,
-    "ttft_p90_ms": 497,
-    "maxitl_p90_ms": 232,
-    "caution": false
-   },
-   {
-    "rate": 0.5,
-    "tok_s_per_gpu": 120,
-    "ttft_p90_ms": 501,
-    "maxitl_p90_ms": 234,
-    "caution": false
-   },
-   {
-    "rate": 1.0,
-    "tok_s_per_gpu": 237,
-    "ttft_p90_ms": 511,
-    "maxitl_p90_ms": 252,
-    "caution": false
-   }
-  ],
-  "31b_4k:Replicas (3)": [
-   {
-    "rate": 0.75,
-    "tok_s_per_gpu": 119,
-    "ttft_p90_ms": 499,
-    "maxitl_p90_ms": 234,
-    "caution": false
-   },
-   {
-    "rate": 1.5,
-    "tok_s_per_gpu": 237,
-    "ttft_p90_ms": 511,
-    "maxitl_p90_ms": 250,
-    "caution": false
-   },
-   {
-    "rate": 2.5,
-    "tok_s_per_gpu": 391,
-    "ttft_p90_ms": 551,
-    "maxitl_p90_ms": 257,
-    "caution": false
-   }
-  ],
-  "31b_4k:1P1D": [
-   {
-    "rate": 0.25,
-    "tok_s_per_gpu": 62,
-    "ttft_p90_ms": 1011,
-    "maxitl_p90_ms": 36,
-    "caution": false
-   },
-   {
-    "rate": 0.5,
-    "tok_s_per_gpu": 119,
-    "ttft_p90_ms": 1310,
-    "maxitl_p90_ms": 38,
-    "caution": false
-   },
-   {
-    "rate": 1.0,
-    "tok_s_per_gpu": 236,
-    "ttft_p90_ms": 1649,
-    "maxitl_p90_ms": 43,
-    "caution": false
-   }
-  ],
-  "31b_4k:1P2D": [
-   {
-    "rate": 0.75,
-    "tok_s_per_gpu": 119,
-    "ttft_p90_ms": 1779,
-    "maxitl_p90_ms": 39,
-    "caution": false
-   },
-   {
-    "rate": 1.5,
-    "tok_s_per_gpu": 235,
-    "ttft_p90_ms": 5185,
-    "maxitl_p90_ms": 41,
-    "caution": false
-   },
-   {
-    "rate": 2.5,
-    "tok_s_per_gpu": 334,
-    "ttft_p90_ms": 62234,
-    "maxitl_p90_ms": 59,
-    "caution": false
-   }
-  ],
-  "31b_4k:2P1D": [
-   {
-    "rate": 0.75,
-    "tok_s_per_gpu": 118,
-    "ttft_p90_ms": 1002,
-    "maxitl_p90_ms": 46,
-    "caution": false
-   },
-   {
-    "rate": 1.5,
-    "tok_s_per_gpu": 233,
-    "ttft_p90_ms": 1170,
-    "maxitl_p90_ms": 66,
-    "caution": false
-   },
-   {
-    "rate": 2.5,
-    "tok_s_per_gpu": 380,
-    "ttft_p90_ms": 1660,
-    "maxitl_p90_ms": 88,
     "caution": false
    }
   ]
