@@ -22,7 +22,7 @@
 
 대규모 언어 모델 서빙에서 한 요청은 두 단계를 거친다. 입력 전체를 한 번에 처리하는 프리필(prefill)과 출력 토큰을 하나씩 만드는 디코드(decode)다. 두 단계를 같은 GPU에서 섞어 돌리면 긴 프리필이 디코드를 가로막아 이미 응답 중인 요청의 토큰 흐름이 끊긴다. 분리 서빙은 두 단계를 서로 다른 GPU에 맡겨 이 간섭을 없애고 프리필이 만든 KV 캐시(어텐션의 키·값을 저장한 캐시)를 디코드 GPU로 보낸다[DistServe, Splitwise, Mooncake].
 
-분리의 대가는 KV 캐시 전송이다. 기존 연구는 이 전송이 충분히 빠르다고 전제한다. DistServe와 Splitwise는 노드 안의 NVLink나 노드 사이의 InfiniBand를, Mooncake는 RDMA(원격 직접 메모리 접근) 네트워크를 쓴다. 그러나 현실의 추론 인프라는 더 다양하다. 추론용 GPU의 종류가 늘었고 노드 하나에 GPU가 한 장뿐인 인스턴스도 많다. 임대 클라우드에서는 네트워크를 고를 수 없어 GPU 사이의 데이터가 일반 이더넷을 타야 하는 경우가 흔하다. 이런 환경에서 분리가 성립하는지를 두고는 "TCP는 매우 느리다"는 경고가 있을 뿐 측정 수치는 드물다[vLLM 문서, NVIDIA Dynamo 문서].
+분리의 대가는 KV 캐시 전송이다. 기존 연구는 이 전송을 빠른 연결 위에 올린다. Splitwise는 노드 사이 InfiniBand를, Mooncake는 RDMA(원격 직접 메모리 접근) 네트워크를 쓴다. DistServe는 노드 사이 대역폭이 부족하면 프리필과 디코드를 같은 노드에 배치해 노드 안의 NVLink로만 KV를 옮긴다[DistServe]. 노드에 GPU가 한 장뿐이면 이 해법은 쓸 수 없다. 그러나 현실의 추론 인프라는 더 다양하다. 추론용 GPU의 종류가 늘었고 노드 하나에 GPU가 한 장뿐인 인스턴스도 많다. 임대 클라우드에서는 네트워크를 고를 수 없어 GPU 사이의 데이터가 일반 이더넷을 타야 하는 경우가 흔하다. 이런 환경에 대해 공개 문서들은 대체로 부정적이다. llm-d 문서는 TCP 전송이 "매우 느려 로컬 개발용"이라고 적고[llm-d 문서], NVIDIA Dynamo 문서는 RDMA가 없으면 첫 토큰이 200~500배 나빠진다며 이때는 분리하지 말라고 권한다[Dynamo 문서]. 그러나 어떤 조건에서 얼마나 느린지를 보여 주는 측정은 드물다.
 
 최근에는 느린 연결에서 분리를 다룬 연구도 나오기 시작했다. Prefill-as-a-Service는 상용 이더넷으로 데이터센터 사이에 KV 캐시를 보내고[PrfaaS], PDD는 TCP 광역망으로 데이터센터 사이의 분리를 구성한다[PDD]. llm-d 프로젝트는 TCP 위에서 KV 전송 라이브러리의 성능 차이를 측정했다[llm-d]. 앞의 연구들은 대규모 클러스터 사이에서 동작하는 자체 시스템이다. 이 연구는 방향이 다르다. 공개된 설계를 공개 도구(vLLM, NIXL)로 그대로 쓰고 임대 클라우드의 GPU 노드 사이 TCP 연결에서 분리가 언제 이득인지를 측정한다.
 
@@ -43,13 +43,13 @@
 
 ## 2. 배경과 관련 연구
 
-**분리 서빙.** DistServe는 프리필과 디코드를 나눠 각각의 지연 목표에 맞게 자원을 배치하고 목표 달성률 90%일 때의 GPU당 굿풋을 지표로 삼았다[DistServe]. 이 연구도 같은 지표 체계를 따른다. Splitwise는 두 단계의 하드웨어 요구가 다르다는 점에 착안해 서로 다른 기종에 나눠 배치했고 InfiniBand로 KV를 층별로 전송했다[Splitwise]. Mooncake는 KV 캐시를 중심으로 분리 구조를 설계해 대규모 서비스에 적용했다[Mooncake]. TetriInfer, DéjàVu, P/D-Serve도 같은 계열이다. 이들은 모두 고속 연결을 전제한다.
+**분리 서빙.** DistServe는 프리필과 디코드를 나눠 각각의 지연 목표에 맞게 자원을 배치하고 목표 달성률(예: 90%)을 지키는 GPU당 굿풋을 지표로 삼았다[DistServe]. 이 연구도 같은 지표 체계를 따른다. DistServe의 실험 환경은 노드 사이 대역폭이 25 Gbps였고 이때는 KV 전송을 노드 안의 NVLink로 한정했다. Splitwise는 두 단계의 하드웨어 요구가 다르다는 점에 착안해 서로 다른 기종에 나눠 배치했고 InfiniBand 위에서 KV를 보냈다. 긴 입력은 층 단위로 나눠 계산과 겹쳤다[Splitwise]. Mooncake는 KV 캐시를 중심으로 분리 구조를 설계해 Kimi 서비스에 적용했다[Mooncake]. TetriInfer[TetriInfer], DéjàVu[DéjàVu], P/D-Serve[P/D-Serve]도 같은 계열이다. 이들은 모두 RDMA나 NVLink 같은 고속 연결을 전제하거나 그런 연결을 모의해 평가했다.
 
-**함께 두기의 개선.** Sarathi-Serve는 프리필을 작은 조각으로 나눠 디코드와 섞는 청크 프리필(chunked prefill)로 간섭을 줄였다[Sarathi-Serve]. 이 연구의 복제본 구성도 청크 프리필을 쓴다. Sarathi-Serve는 토큰 간격 SLO를 간섭 없는 디코드 스텝 시간의 5배(엄격)와 25배(느슨)로 정의했다. semi-PD는 한 GPU 안에서 연산 자원을 나누는 절충안을 제시했다[semi-PD].
+**함께 두기의 개선.** Sarathi-Serve는 프리필을 작은 조각으로 나눠 디코드와 섞는 청크 프리필(chunked prefill)로 간섭을 줄였다[Sarathi-Serve]. 이 연구의 복제본 구성도 청크 프리필을 쓴다. Sarathi-Serve는 토큰 간격 SLO를 간섭 없는 디코드 스텝 시간의 5배(엄격)와 25배(느슨)로 정의했다. semi-PD는 한 GPU 안에서 연산 자원(SM)만 프리필과 디코드로 나누고 KV 저장소는 함께 쓰는 방식을 제안했다[semi-PD].
 
-**KV 전송 계층.** vLLM은 NIXL 라이브러리로 KV를 전송하고 NIXL은 UCX 등 여러 전송 백엔드를 감싼다. UCX는 RDMA가 없으면 TCP를 쓴다. CacheGen은 KV 캐시를 압축해 네트워크 전송량을 줄였다[CacheGen].
+**KV 전송 계층.** vLLM[vLLM]은 NIXL 라이브러리[NIXL]로 KV를 전송하고 NIXL은 UCX[UCX] 등 여러 전송 백엔드를 감싼다. UCX는 RDMA가 없으면 TCP를 쓴다. CacheGen은 KV 캐시를 압축해 네트워크 전송량을 줄였다[CacheGen].
 
-**느린 연결에서의 분리.** Prefill-as-a-Service는 혼합 어텐션 모델의 KV가 작다는 점을 이용해, 상용 이더넷으로 데이터센터 사이에 KV를 보내는 구조를 제안했다[PrfaaS]. PDD는 TCP 광역망으로 연결된 두 클러스터 사이에서 분리를 구성하고 전송을 계산과 겹치기 위한 중계 디코드를 도입했다[PDD]. llm-d 프로젝트는 100 Gbps TCP에서 GPU 간 전송이 UCX로는 0.55 GB/s, UCCL로는 약 4.7~4.9 GB/s라고 보고했다[llm-d]. NVIDIA는 분리가 프리필 비중이 크고 모델이 클 때 가장 효과적이라고 정리했다[Beyond the Buzz]. <span class="todo">※ 원문 대조 필요: Dynamo 문서의 TCP 저하 배수, Beyond the Buzz의 해당 문장</span>
+**느린 연결에서의 분리.** Prefill-as-a-Service는 혼합 어텐션 모델의 KV가 작다는 점을 이용해, 상용 이더넷으로 데이터센터 사이에 KV를 보내는 구조를 제안했다[PrfaaS]. PDD는 TCP 광역망으로 연결된 두 클러스터 사이에서 분리를 구성하고 전송을 계산과 겹치기 위한 중계 디코드를 도입했다[PDD]. llm-d 프로젝트는 H100 두 노드 사이 100 Gbps TCP에서 GPU 간 전송이 UCX로는 0.55 GB/s, UCCL로는 약 4.7~4.9 GB/s라고 보고했다[llm-d]. NVIDIA Dynamo 문서는 AWS p5.48xlarge에서 TCP로 전송했을 때 첫 토큰이 약 98초였다고 적었지만 모델과 입력 길이는 밝히지 않았다[Dynamo 문서]. Mitra 등은 분리가 프리필 비중이 큰 트래픽과 큰 모델에서 가장 효과적이라고 보고했다[Beyond the Buzz]. vLLM 문서도 분리가 처리량을 늘리지는 않는다고 명시한다[vLLM 문서].
 
 **이 연구의 위치.** 위 연구들이 대규모 클러스터에서 새 시스템을 설계했다면, 이 연구는 기본 vLLM을 임대 GPU 노드에 그대로 올려 측정한다. 전송 시간을 미리 계산하는 모델과 도입 판단 기준을 함께 제시한다. 같은 조건을 측정한 연구는 찾지 못했지만 조사가 완전하지 않으므로 이 연구가 최초라고 주장하지는 않는다.
 
@@ -57,7 +57,7 @@
 
 ### 3.1 환경
 
-AWS us-east-1의 한 가용 영역에서 GPU 인스턴스 세 종류를 썼다. 모두 노드당 GPU가 한 장이다(표 1). 같은 가용 영역 안에서 TCP 연결 하나의 대역폭 상한은 약 4.97 Gbps였다. 클러스터 배치 그룹(cluster placement group, 인스턴스를 네트워크상 가까운 곳에 모아 두는 AWS 기능)에 넣으면 이 상한이 9.54 Gbps로 올라갔다. g7e의 명목 대역폭 50 Gbps는 연결 여덟 개를 합쳐야 도달했다(49.72 Gbps). 부하 생성과 요청 중계는 별도의 CPU 인스턴스에서 했다.
+AWS us-east-1의 한 가용 영역에서 GPU 인스턴스 세 종류를 썼다. 모두 노드당 GPU가 한 장이다(표 1). 같은 가용 영역 안에서 TCP 연결 하나의 대역폭 상한은 약 4.97 Gbps였다. AWS 문서가 밝힌 단일 연결 상한 5 Gbps와 같다[AWS 대역폭]. 클러스터 배치 그룹(cluster placement group, 인스턴스를 네트워크상 가까운 곳에 모아 두는 AWS 기능)에 넣으면 이 상한이 9.54 Gbps로 올라갔다(문서상 최대 10 Gbps). g7e의 명목 대역폭 50 Gbps는 연결 여덟 개를 합쳐야 도달했다(49.72 Gbps). 부하 생성과 요청 중계는 별도의 CPU 인스턴스에서 했다.
 
 | 인스턴스 | GPU | GPU 메모리 | 주로 쓴 실험 |
 |---|---|---|---|
@@ -71,7 +71,7 @@ AWS us-east-1의 한 가용 영역에서 GPU 인스턴스 세 종류를 썼다. 
 
 ### 3.2 모델과 KV 크기
 
-Gemma 4의 26B-A4B와 31B 두 모델을 썼다. 26B-A4B는 토큰마다 일부 전문가 층만 쓰는 혼합 전문가(MoE) 구조로 활성 파라미터가 약 4B이고 31B는 모든 파라미터를 쓰는 dense 구조다. 둘 다 전역 어텐션과 슬라이딩 윈도 어텐션을 섞은 혼합 어텐션 구조다. 정밀도로는 NVIDIA의 4비트 부동소수점 형식인 NVFP4 체크포인트를 주로 썼고 비교를 위해 FP8(가중치만 양자화)과 BF16도 썼다. NVFP4 체크포인트는 KV 캐시를 FP8로 저장하고 FP8·BF16 체크포인트는 BF16으로 저장한다. 그래서 같은 26B 모델이라도 4K 토큰 입력 한 건의 전송량이 NVFP4는 140 MB(입력 토큰당 약 34 KB), FP8은 280 MB로 두 배 차이가 난다. 31B NVFP4는 560 MB(입력 토큰당 약 137 KB)다.
+Gemma 4의 26B-A4B와 31B 두 모델을 썼다. 26B-A4B는 토큰마다 일부 전문가 층만 쓰는 혼합 전문가(MoE) 구조로 전체 25.2B 가운데 3.8B 파라미터만 활성화되고 31B는 모든 파라미터(30.7B)를 쓰는 dense 구조다. 둘 다 슬라이딩 윈도 어텐션과 전역 어텐션을 번갈아 쓰는 혼합 어텐션 구조다[Gemma 4]. 정밀도로는 NVIDIA의 4비트 부동소수점 형식인 NVFP4 체크포인트를 주로 썼고 비교를 위해 FP8(가중치만 양자화)과 BF16도 썼다. NVFP4 체크포인트는 KV 캐시를 FP8로 저장하고(체크포인트의 양자화 설정 파일 기준)[NVFP4 체크포인트] FP8·BF16 체크포인트는 BF16으로 저장한다. 그래서 같은 26B 모델이라도 4K 토큰 입력 한 건의 전송량이 NVFP4는 140 MB(입력 토큰당 약 34 KB), FP8은 280 MB로 두 배 차이가 난다. 31B NVFP4는 560 MB(입력 토큰당 약 137 KB)다.
 
 ### 3.3 구성
 
@@ -79,7 +79,7 @@ Gemma 4의 26B-A4B와 31B 두 모델을 썼다. 26B-A4B는 토큰마다 일부 �
 
 ### 3.4 워크로드
 
-세 종류를 썼다. 대화형은 ShareGPT 대화(입력 중앙값 약 80~100 토큰, 출력 약 100~150 토큰)다. 긴 입력은 입력 길이를 4,096, 16,384, 32,000 토큰으로 고정하고 출력을 512 토큰으로 고정한 합성 요청이다. 실제 트레이스는 Azure의 공개 대화 트레이스 600건(입력 중앙값 996, 출력 217 토큰)이다. 요청은 정해진 평균 요청률을 따르는 포아송 과정으로 보냈고 한 측정은 180초다.
+세 종류를 썼다. 대화형은 ShareGPT 대화[ShareGPT](입력 중앙값 약 80~100 토큰, 출력 약 100~150 토큰)다. 긴 입력은 입력 길이를 4,096, 16,384, 32,000 토큰으로 고정하고 출력을 512 토큰으로 고정한 합성 요청이다. 실제 트레이스는 Splitwise와 함께 공개된 Azure LLM 추론 트레이스(2023) 중 대화 트레이스의 600건(입력 중앙값 996, 출력 217 토큰)이다[Azure 트레이스]. 요청은 정해진 평균 요청률을 따르는 포아송 과정으로 보냈고 한 측정은 180초다.
 
 ### 3.5 지표와 SLO
 
@@ -87,7 +87,7 @@ Gemma 4의 26B-A4B와 31B 두 모델을 썼다. 26B-A4B는 토큰마다 일부 �
 
 달성률은 SLO를 지킨 요청의 비율이다. 지원 부하는 달성률 0.9 이상인 가장 높은 요청률이고 반복 측정한 지점은 모든 반복이 0.9 이상이어야 인정한다. SLO 굿풋은 SLO를 지킨 요청의 출력 토큰 처리량이고 원가는 GPU 시간당 요금을 SLO 굿풋으로 나눈 토큰 100만 개당 달러다.
 
-첫 토큰 1초는 설계상의 선택이다. 선행 연구의 첫 토큰 목표는 응용과 모델에 따라 0.125초에서 30초까지 넓게 퍼져 있다(DistServe의 코드 완성 0.125초와 챗봇 0.25~4.0초, Mooncake의 실제 트레이스 실험 30초). 1초는 사용자가 흐름이 끊겼다고 느끼기 시작하는 응답 시간으로 알려진 값이다[Nielsen]<span class="todo">※ 원문 대조 필요</span>. 결과가 이 기준에 얼마나 의존하는지는 4.6절에서 따로 확인한다.
+첫 토큰 1초는 설계상의 선택이다. 선행 연구의 첫 토큰 목표는 응용과 모델에 따라 0.125초에서 30초까지 넓게 퍼져 있다(DistServe의 코드 완성 0.125초와 챗봇 0.25~4.0초, Mooncake의 실제 트레이스 실험 30초). 1초는 사용자가 지연을 느끼더라도 생각의 흐름이 끊기지 않는 한계로 알려진 값이다[Nielsen]. 결과가 이 기준에 얼마나 의존하는지는 4.6절에서 따로 확인한다.
 
 ### 3.6 절차와 데이터 선별
 
@@ -195,7 +195,7 @@ Azure 대화 트레이스를 26B는 두 노드(초당 약 4건)와 세 노드(�
 
 분리 구성이 문맥을 제대로 옮기는지도 확인했다. 채팅 양식의 짧은 질문 여섯 개와 약 4K 토큰의 긴 질문 두 개를 온도 0으로 보내, 짧은 질문은 단일 노드와 출력이 같은지, 긴 질문은 핵심 단어가 충분히 겹치는지 비교했다.
 
-KV를 디코드 쪽이 가져가는 대신 프리필 쪽이 밀어 넣는 푸시 방식은 31B 4K에서 전송 시간을 27~36%, 첫 토큰 중앙값을 53~62 ms 줄였지만 달성률 차이는 ±0.04에 그쳤다(부록 그림 A6). KV 전송을 층별로 프리필 계산과 겹치는 vLLM의 제안 패치(PR #56874)는 KV 캐시 그룹이 하나인 모델만 지원해, 혼합 어텐션인 Gemma 4에서는 첫 요청부터 멈췄다.
+KV를 디코드 쪽이 가져가는 대신 프리필 쪽이 밀어 넣는 푸시 방식은 31B 4K에서 전송 시간을 27~36%, 첫 토큰 중앙값을 53~62 ms 줄였지만 달성률 차이는 ±0.04에 그쳤다(부록 그림 A6). 같은 노드 안의 PCIe 연결에서는 푸시가 풀보다 약 100배 빠르다는 보고가 있다[vLLM #52607]. 노드 사이 TCP에서는 그런 차이가 나타나지 않았다. KV 전송을 층별로 프리필 계산과 겹치는 vLLM의 제안 패치(PR #56874)는 KV 캐시 그룹이 하나인 모델만 지원해, 혼합 어텐션인 Gemma 4에서는 첫 요청부터 멈췄다.
 
 ## 5. 논의
 
@@ -289,19 +289,32 @@ RDMA나 AWS EFA가 있는 환경에서는 식 1의 연결당 상한과 <i>m</i>�
 
 <div class="refs" markdown="1">
 
-- [DistServe] Zhong et al. DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving. OSDI 2024.
-- [Splitwise] Patel et al. Splitwise: Efficient Generative LLM Inference Using Phase Splitting. ISCA 2024.
-- [Mooncake] Qin et al. Mooncake: A KVCache-centric Disaggregated Architecture for LLM Serving. FAST 2025.
-- [Sarathi-Serve] Agrawal et al. Taming Throughput-Latency Tradeoff in LLM Inference with Sarathi-Serve. OSDI 2024.
-- [semi-PD] arXiv 2504.19867.
-- [CacheGen] Liu et al. CacheGen: KV Cache Compression and Streaming for Fast Large Language Model Serving. SIGCOMM 2024.
-- [PrfaaS] Qin et al. Prefill-as-a-Service: KVCache of Next-Generation Models Could Go Cross-Datacenter. arXiv 2604.15039, 2026.
-- [PDD] Wang et al. PDD: Unleashing Economical and Flexible Heterogeneous LLM Inference via Cross-Datacenter Prefill-Decode Disaggregation. arXiv 2609.13161, 2026.
-- [llm-d] Networking for Distributed Inference in llm-d. llm-d blog, 2026-06-23.
-- [Beyond the Buzz] Beyond the Buzz: A Pragmatic Take on Inference Disaggregation. arXiv 2506.05508.
-- [vLLM 문서] vLLM Disaggregated Prefilling 문서.
-- [NVIDIA Dynamo 문서] Disaggregated communication guide.
-- [Nielsen] Nielsen, J. Usability Engineering, 1993 (응답 시간 한계).
+- [DistServe] Y. Zhong, S. Liu, J. Chen, J. Hu, Y. Zhu, X. Liu, X. Jin, H. Zhang. DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving. OSDI 2024, pp. 193–210.
+- [Splitwise] P. Patel, E. Choukse, C. Zhang, A. Shah, Í. Goiri, S. Maleki, R. Bianchini. Splitwise: Efficient Generative LLM Inference Using Phase Splitting. ISCA 2024.
+- [Mooncake] R. Qin, Z. Li, W. He 외. Mooncake: Trading More Storage for Less Computation — A KVCache-centric Architecture for Serving LLM Chatbot. FAST 2025.
+- [Sarathi-Serve] A. Agrawal 외. Taming Throughput-Latency Tradeoff in LLM Inference with Sarathi-Serve. OSDI 2024.
+- [TetriInfer] C. Hu 외. Inference without Interference: Disaggregate LLM Inference for Mixed Downstream Workloads. arXiv:2401.11181, 2024.
+- [DéjàVu] F. Strati, S. Mcallister, A. Phanishayee, J. Tarnawski, A. Klimovic. DéjàVu: KV-cache Streaming for Fast, Fault-tolerant Generative LLM Serving. ICML 2024.
+- [P/D-Serve] Y. Jin 외. P/D-Serve: Serving Disaggregated Large Language Model at Scale. arXiv:2408.08147, 2024.
+- [semi-PD] K. Hong 외. semi-PD: Towards Efficient LLM Serving via Phase-Wise Disaggregated Computation and Unified Storage. arXiv:2504.19867, 2025.
+- [CacheGen] Y. Liu 외. CacheGen: KV Cache Compression and Streaming for Fast Large Language Model Serving. SIGCOMM 2024.
+- [PrfaaS] R. Qin 외. Prefill-as-a-Service: KVCache of Next-Generation Models Could Go Cross-Datacenter. arXiv:2604.15039, 2026.
+- [PDD] Y. Wang 외. PDD: Unleashing Economical and Flexible Heterogeneous LLM Inference via Cross-Datacenter Prefill-Decode Disaggregation. arXiv:2609.13161, 2026.
+- [Beyond the Buzz] T. Mitra 외. Beyond the Buzz: A Pragmatic Take on Inference Disaggregation. arXiv:2506.05508, 2025.
+- [vLLM] W. Kwon 외. Efficient Memory Management for Large Language Model Serving with PagedAttention. SOSP 2023.
+- [UCX] P. Shamis 외. UCX: An Open Source Framework for HPC Network APIs and Beyond. HOTI 2015.
+- [NIXL] NVIDIA Inference Xfer Library. https://github.com/ai-dynamo/nixl
+- [llm-d] P. G. Kannan 외. Networking for Distributed Inference in llm-d. llm-d 블로그, 2026-06-23.
+- [llm-d 문서] llm-d documentation, Disaggregated Serving (v0.9). https://llm-d.ai/docs/architecture/advanced/disaggregation
+- [Dynamo 문서] NVIDIA Dynamo v1.3.0, Disaggregated Inference Communication Guide.
+- [vLLM 문서] vLLM documentation, Disaggregated Prefilling (experimental).
+- [vLLM #52607] vLLM GitHub issue #52607, 2026-08-17.
+- [AWS 대역폭] Amazon EC2 User Guide, Amazon EC2 instance network bandwidth.
+- [Gemma 4] Google, Gemma 4 model card. https://ai.google.dev/gemma/docs/core/model_card_4
+- [NVFP4 체크포인트] NVIDIA, Gemma-4-26B-A4B-NVFP4, Gemma-4-31B-IT-NVFP4 (Hugging Face).
+- [ShareGPT] ShareGPT_Vicuna_unfiltered, ShareGPT_V3_unfiltered_cleaned_split.json (Hugging Face).
+- [Azure 트레이스] Azure LLM inference trace 2023 (AzurePublicDataset), AzureLLMInferenceTrace_conv.
+- [Nielsen] J. Nielsen. Usability Engineering, 5장, 1993. 요약: Response Times: The 3 Important Limits, NN/g.
 
 </div>
-<span class="todo">※ 참고문헌은 저자·서지 정보 원문 대조 후 확정</span>
+
