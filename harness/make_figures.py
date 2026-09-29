@@ -151,9 +151,9 @@ def f02(rows, out):
     a.plot(xs, [d[1] for d in data], color=S2, marker="s")
     a.axhline(1000, color=INK2, lw=1, ls=(0, (4, 3)))
     a.text(0.05, 1030, "TTFT budget 1 s", fontsize=7.5, color=INK2)
-    a.set_ylabel("TTFT p50 (ms)"); a.set_title("a  First token")
+    a.set_ylabel("TTFT p50 (ms)"); a.set_title("(a) First token")
     b.bar(xs, [d[2] for d in data], color=S2, width=0.55)
-    slo_line(b); b.set_ylim(0, 1.05); b.set_ylabel("Chat SLO attainment"); b.set_title("b  Attainment")
+    slo_line(b); b.set_ylim(0, 1.05); b.set_ylabel("Chat SLO attainment"); b.set_title("(b) Attainment")
     for ax in (a, b):
         ax.set_xticks(list(xs)); ax.set_xticklabels([d[0] for d in data])
         ax.set_xlabel("Sender rate limit (Gbps)")
@@ -165,13 +165,13 @@ def f02(rows, out):
 
 
 def f03(rows, out):
-    fig, (a, b) = plt.subplots(1, 2, figsize=(6.4, 2.8), gridspec_kw={"width_ratios": [1, 1.25]})
+    fig, (a, b) = plt.subplots(1, 2, figsize=(7.0, 2.9), gridspec_kw={"width_ratios": [1, 1.25], "wspace": 0.3})
     flows = [1, 2, 4, 8]; gb = [9.54, 19.06, 38.11, 49.72]
     a.plot(flows, gb, color=S1, marker="o")
     a.axhline(50, color=INK2, lw=1, ls=(0, (4, 3)))
     a.text(1, 51.5, "instance 50 Gbps", fontsize=7.5, color=INK2)
     a.set_xticks(flows); a.set_ylim(0, 58)
-    a.set_xlabel("Parallel TCP flows (iperf)"); a.set_ylabel("Gbps"); a.set_title("a  Placement group, g7e")
+    a.set_xlabel("Parallel TCP flows (iperf, placement group)"); a.set_ylabel("Gbps"); a.set_title("(a) Bandwidth vs TCP flows")
     cats = ["No placement\ngroup", "Placement\ngroup"]
     cap = [4.97, 9.54]; eff = [6.55, 13.96]
     x = [0, 1]; w = 0.34
@@ -180,9 +180,9 @@ def f03(rows, out):
     for i in x:
         b.text(i + w / 2, eff[i] + 0.4, f"{eff[i] / cap[i]:.2f}×", ha="center", fontsize=7.5, color=INK)
     knobs = [13.86, 14.43, 13.99, 13.58]
-    b.scatter([1 + w / 2 + 0.2] * 4, knobs, s=12, color=INK2, zorder=3, label="UCX/NIXL knobs (4)")
+    b.scatter([1 + w / 2 + 0.2] * 4, knobs, s=12, color=INK2, zorder=3, label="Four other UCX/NIXL settings")
     b.set_xticks(x); b.set_xticklabels(cats); b.set_ylim(0, 17.5); b.set_ylabel("Gbps")
-    b.set_title("b  KV transfer vs per-flow cap"); b.legend(loc="upper left")
+    b.set_title("(b) Flow cap vs KV transfer"); b.legend(loc="upper left")
     fig.tight_layout()
     save(fig, out, "fig03_network", {"quoted": "RESULTS.md E4-0, E4-2", "iperf_pg": dict(zip(flows, gb)),
                                      "cap": cap, "effective": eff, "knobs": knobs})
@@ -223,7 +223,7 @@ def f05(rows, out):
         a.plot(range(3), [r["attain_chat"] for r in rs], color=c, marker=m, label=lab)
         b.plot(range(3), [r["attain_doc"] for r in rs], color=c, marker=m, label=lab)
         meta[cfg] = [(l, r["attain_chat"], r["attain_doc"]) for l, r in zip(L, rs)]
-    for ax, t in ((a, "a  Chat SLO (1 s / 50 ms)"), (b, "b  Document SLO (3 s / 250 ms)")):
+    for ax, t in ((a, "(a) Chat SLO (1 s / 50 ms)"), (b, "(b) Document SLO (3 s / 250 ms)")):
         ax.set_xticks(range(3)); ax.set_xticklabels(["4K", "16K", "32K"]); ax.set_xlabel("Input length")
         slo_line(ax); ax.set_title(t); ax.set_ylim(-0.03, 1.05)
     a.set_ylabel("SLO attainment"); a.legend(loc="upper right")
@@ -284,7 +284,7 @@ def f08(rows, out):
         gc = by_rate(pick(rows, ("E5", "E7"), cfg, "sharegpt"))
         caution = {r for r, v in gc.items() if any(x["safety"] == "주의" for x in v)}
         meta["chat_" + cfg] = range_series(b, gc, n, c, m, lab, ls, caution)
-    a.set_title("a  4K input"); b.set_title("b  ShareGPT chat")
+    a.set_title("(a) 4K input"); b.set_title("(b) ShareGPT chat")
     a.set_xlabel("Request rate per GPU (req/s)"); b.set_xlabel("Request rate per GPU (req/s)")
     a.set_ylabel("Chat SLO attainment")
     for ax in (a, b):
@@ -307,7 +307,7 @@ def f09(rows, out):
         g = by_rate(pick(rows, ("E5", "E7"), cfg, "random", inlen=4096))
         if g:
             meta["4k_" + cfg] = range_series(b, g, n, c, m, lab, ls)
-    a.set_title("a  ShareGPT chat"); b.set_title("b  4K input")
+    a.set_title("(a) ShareGPT chat"); b.set_title("(b) 4K input")
     a.set_xlabel("Request rate per GPU (req/s)"); b.set_xlabel("Request rate per GPU (req/s)")
     a.set_ylabel("Chat SLO attainment")
     for ax in (a, b):
@@ -359,8 +359,8 @@ def f11(rows, out):
     for ax in (a, b):
         ax.set_xticks(range(len(cfgs))); ax.set_xticklabels([c[1] for c in cfgs], fontsize=7)
         ax.axvline(4.5, color=GRID, lw=1)
-    a.set_ylabel("TTFT p50 (ms)"); a.set_title("a  First token")
-    b.set_ylabel("Chat SLO attainment"); b.set_ylim(0, 1.08); slo_line(b); b.set_title("b  Attainment")
+    a.set_ylabel("TTFT p50 (ms)"); a.set_title("(a) First token")
+    b.set_ylabel("Chat SLO attainment"); b.set_ylim(0, 1.08); slo_line(b); b.set_title("(b) Attainment")
     fig.suptitle("Azure conversation trace, 600 requests (input median 996, output 217 tokens)", x=0.01,
                  ha="left", fontsize=8, color=INK2, y=1.02)
     fig.tight_layout()
@@ -447,8 +447,8 @@ def f14(rows, out):
             meta.append({"config": cfg, "rate": r, "ttft_p50": round(x["ttft_p50_ms"]), "attain": x["attain_chat"]})
     for ax in (a, b):
         ax.set_xticks([0, 1]); ax.set_xticklabels(["0.25 req/s", "0.5 req/s"])
-    a.set_ylabel("TTFT p50 (ms)"); a.set_title("a  First token"); a.legend(loc="lower right")
-    b.set_ylabel("Chat SLO attainment"); b.set_ylim(0, 1.05); slo_line(b); b.set_title("b  Attainment")
+    a.set_ylabel("TTFT p50 (ms)"); a.set_title("(a) First token"); a.legend(loc="lower right")
+    b.set_ylabel("Chat SLO attainment"); b.set_ylim(0, 1.05); slo_line(b); b.set_title("(b) Attainment")
     fig.suptitle("31B NVFP4 1P1D, 4K input: push trims the median, not the SLO", x=0.01, ha="left",
                  fontsize=8, color=INK2, y=1.02)
     fig.tight_layout()
