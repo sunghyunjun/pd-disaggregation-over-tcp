@@ -211,7 +211,7 @@ def f04(rows, out):
                        plt.Rectangle((0, 0), 1, 1, color="#f4b79c"), Line2D([0], [0], color=INK, lw=1.6)],
               labels=["Single-node TTFT", "KV transfer", "Residual", "Predicted before run"],
               loc="upper left", bbox_to_anchor=(0, -0.22), ncol=4, fontsize=7.5)
-    ax.set_title("The added TTFT under disaggregation is almost all KV transfer")
+    ax.set_title("Disaggregation adds TTFT almost entirely through KV transfer")
     save(fig, out, "fig04_ttft_decomposition", {"quoted": "RESULTS.md E4-1, E5 formula check",
                                                 "items": items})
 
