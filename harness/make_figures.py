@@ -175,14 +175,15 @@ def f03(rows, out):
     cats = ["No placement\ngroup", "Placement\ngroup"]
     cap = [4.97, 9.54]; eff = [6.55, 13.96]
     x = [0, 1]; w = 0.34
-    b.bar([i - w / 2 for i in x], cap, w, color=S1, label="Single-flow cap (iperf)")
-    b.bar([i + w / 2 for i in x], eff, w, color=S2, label="Effective KV transfer")
+    b.bar([i - w / 2 for i in x], cap, w, color=S1, label="One TCP flow limit (iperf)")
+    b.bar([i + w / 2 for i in x], eff, w, color=S2, label="Measured KV cache transfer rate")
     for i in x:
         b.text(i + w / 2, eff[i] + 0.4, f"{eff[i] / cap[i]:.2f}×", ha="center", fontsize=7.5, color=INK)
     knobs = [13.86, 14.43, 13.99, 13.58]
-    b.scatter([1 + w / 2 + 0.2] * 4, knobs, s=12, color=INK2, zorder=3, label="Four other UCX/NIXL settings")
-    b.set_xticks(x); b.set_xticklabels(cats); b.set_ylim(0, 17.5); b.set_ylabel("Gbps")
-    b.set_title("(b) Flow cap vs KV transfer"); b.legend(loc="upper left")
+    b.scatter([1 + w / 2 + 0.2] * 4, knobs, s=12, color=INK2, zorder=3, label="KV cache transfer rate, 4 other UCX/NIXL settings")
+    b.set_xticks(x); b.set_xticklabels(cats); b.set_ylim(0, 17); b.set_ylabel("Gbps")
+    b.set_title("(b) Flow cap vs KV transfer"); h, l = b.get_legend_handles_labels(); o = [l.index(x) for x in ("One TCP flow limit (iperf)", "Measured KV cache transfer rate", "KV cache transfer rate, 4 other UCX/NIXL settings")]
+    b.legend([h[i] for i in o], [l[i] for i in o], loc="upper left", bbox_to_anchor=(-0.02, -0.25), fontsize=7.5)
     fig.tight_layout()
     save(fig, out, "fig03_network", {"quoted": "RESULTS.md E4-0, E4-2", "iperf_pg": dict(zip(flows, gb)),
                                      "cap": cap, "effective": eff, "knobs": knobs})
