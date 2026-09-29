@@ -202,6 +202,7 @@ def cell(rep, pd):
 # ---------------------------------------------------------------- figures
 def figures(res, cache, out):
     import matplotlib
+    import matplotlib.ticker
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
@@ -277,7 +278,10 @@ def figures(res, cache, out):
         axes[0][col].set_title(g[1].split("\n")[0], fontsize=7.8, loc="left")
         for row in (0, 1):
             axes[row][col].set_yscale("log")
-            axes[row][col].tick_params(labelsize=6.5)
+            axes[row][col].yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:g}"))
+            axes[row][col].yaxis.set_minor_formatter(matplotlib.ticker.FuncFormatter(
+                lambda v, _: f"{v:g}" if str(f"{v:g}")[0] in "25" else ""))
+            axes[row][col].tick_params(labelsize=6.5, which="both")
         axes[0][col].axhline(1000, color=INK2, lw=0.8, ls=(0, (4, 3)))
         axes[1][col].axhline(50, color=INK2, lw=0.8, ls=(0, (4, 3)))
         axes[1][col].set_xlabel("output tok/s per GPU", fontsize=7.2)
@@ -285,8 +289,8 @@ def figures(res, cache, out):
     axes[1][0].set_ylabel("per-request max ITL p90\n(ms, log)", fontsize=7.5)
     h, l = axes[0][0].get_legend_handles_labels()
     fig.legend(h, l, loc="lower center", ncol=5, fontsize=7.5, bbox_to_anchor=(0.5, -0.03))
-    fig.suptitle("Latency–throughput frontier without an SLO (lower-right is better). Dashed: 1 s and 50 ms. "
-                 "Hollow: client-limited point.", x=0.01, ha="left", fontsize=8, color=INK2, y=1.0)
+    fig.suptitle("Latency and throughput without an SLO, g7e in a placement group (lower-right is better). "
+                 "Dashed: 1 s and 50 ms. Hollow: client-limited.", x=0.01, ha="left", fontsize=8, color=INK2, y=1.0)
     fig.tight_layout(rect=(0, 0.04, 1, 0.96))
     fig.savefig(os.path.join(out, "fig16_frontier.pdf"), bbox_inches="tight")
     fig.savefig(os.path.join(out, "fig16_frontier.svg"), bbox_inches="tight", transparent=True)

@@ -2,7 +2,8 @@
  "fig01_request_vs_system": {
   "n_runs": 166,
   "filter": "safe runs with TTFT p99 < 1 s",
-  "replica_runs_p99_under_50_but_attain_below_0.9": 18
+  "replica_runs_p99_under_50_but_attain_below_0.9": 18,
+  "pd_runs_p99_under_50_but_attain_below_0.9": 7
  },
  "fig02_bandwidth_sweep": {
   "points": [
@@ -27,7 +28,7 @@
     "attain": 1.0
    },
    {
-    "limit_gbps": "none",
+    "limit_gbps": "no limit",
     "ttft_p50": 471,
     "attain": 1.0
    }
@@ -127,7 +128,7 @@
  },
  "fig06_gpu_speed_4k": [
   {
-   "group": "g7 · PRO 4500 26B NVFP4",
+   "group": "g7 · PRO 4500 26B NVFP4 (before tuning)",
    "replicas": 0.022,
    "pd": 0.839
   },
