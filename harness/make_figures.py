@@ -38,6 +38,15 @@ plt.rcParams.update({
 })
 
 META = {}
+# 원고 v3용 스위치(기본값은 이전과 같은 그림). make_figures_v3.py가 켠다.
+REP_SUFFIX = ""          # 예: ", chunk 2,560" → 범례 "Replicas (2), chunk 2,560"
+F08_NOTE = "hollow marker: client-limited, not used for verdicts"
+F06_TITLE = "4K input at 1 req/s: replicas hold only with a fast GPU and light weights"
+MARK_CAUTION = False  # True면 주의 런이 섞인 막대(f06, f10)를 빗금으로 표시
+
+
+def rep(n):
+    return f"Replicas ({n}){REP_SUFFIX}"
 
 
 def load(path):
@@ -228,7 +237,7 @@ def f04(rows, out):
 def f05(rows, out):
     fig, (a, b) = plt.subplots(1, 2, figsize=(6.4, 2.7), sharey=True)
     L = [4096, 16384, 32000]; meta = {}
-    for cfg, c, m, lab in (("B2", S1, "o", "Replicas (2)"), ("P1", S2, "s", "1P1D")):
+    for cfg, c, m, lab in (("B2", S1, "o", rep(2)), ("P1", S2, "s", "1P1D")):
         rs = [[x for x in pick(rows, "B", cfg, "random", inlen=l) if x["rate"] == "0.5"][0] for l in L]
         a.plot(range(3), [r["attain_chat"] for r in rs], color=c, marker=m, label=lab)
         b.plot(range(3), [r["attain_doc"] for r in rs], color=c, marker=m, label=lab)
@@ -254,17 +263,21 @@ def f06(rows, out):
     def one(stage, cfg, inl, rate):
         rs = [x for x in pick(rows, stage, cfg, "random", inlen=inl) if x["rate"] == rate]
         return st.mean([x["attain_chat"] for x in rs])
+
+    def caut(stage, cfg, inl, rate):
+        return MARK_CAUTION and any(x["safety"] == "주의" for x in pick(rows, stage, cfg, "random", inlen=inl) if x["rate"] == rate)
     fig, ax = plt.subplots(figsize=(6.2, 2.7)); w = 0.34; meta = []
-    for i, (lab, rep, pd) in enumerate(groups):
-        a, b = one(*rep), one(*pd)
-        ax.bar(i - w / 2, a, w, color=S1, label="Replicas (2)" if i == 0 else None)
+    for i, (lab, rp, pd) in enumerate(groups):
+        a, b = one(*rp), one(*pd)
+        ax.bar(i - w / 2, a, w, color=S1, label=rep(2) if i == 0 else None,
+               hatch="////" if caut(*rp) else None, edgecolor="white" if caut(*rp) else None)
         ax.bar(i + w / 2, b, w, color=S2, label="1P1D" if i == 0 else None)
         for x, v in ((i - w / 2, a), (i + w / 2, b)):
             ax.text(x, v + 0.02, f"{v:.2f}", ha="center", fontsize=7.5)
         meta.append({"group": lab.replace("\n", " "), "replicas": a, "pd": b})
     slo_line(ax); ax.set_ylim(0, 1.12); ax.set_xticks(range(4))
     ax.set_xticklabels([g[0] for g in groups]); ax.set_ylabel("Strict-SLO attainment")
-    ax.set_title("4K input at 1 req/s: replicas hold only with a fast GPU and light weights", fontsize=9)
+    ax.set_title(F06_TITLE, fontsize=9)
     ax.legend(loc="upper left")
     save(fig, out, "fig06_gpu_speed_4k", meta)
 
@@ -287,7 +300,7 @@ def f07(rows, out):
 
 def f08(rows, out):
     fig, (a, b) = plt.subplots(1, 2, figsize=(6.6, 3.0), sharey=True); meta = {}
-    cfgs = [("26_B2", 2, S1, "o", "-", "Replicas (2)"), ("26_B3", 3, S5, "o", LS3, "Replicas (3)"),
+    cfgs = [("26_B2", 2, S1, "o", "-", rep(2)), ("26_B3", 3, S5, "o", LS3, rep(3)),
             ("26_1P1D", 2, S2, "s", "-", "1P1D"), ("26_1P2D", 3, S3, "^", LS3, "1P2D"),
             ("26_2P1D", 3, S4, "D", LS3B, "2P1D")]
     for cfg, n, c, m, ls, lab in cfgs:
@@ -301,7 +314,7 @@ def f08(rows, out):
     a.set_ylabel("Strict-SLO attainment")
     for ax in (a, b):
         slo_line(ax); ax.set_ylim(-0.03, 1.05)
-    b.text(0.98, 0.04, "hollow marker: client-limited, not used for verdicts", transform=b.transAxes, ha="right", fontsize=7, color=INK2)
+    b.text(0.98, 0.04, F08_NOTE, transform=b.transAxes, ha="right", fontsize=7, color=INK2)
     a.legend(loc="lower left", fontsize=7.5)
     fig.suptitle("26B NVFP4, g7e in a placement group. Vertical bars: min–max over repeated runs", x=0.01, ha="left",
                  fontsize=8, color=INK2, y=1.02)
@@ -311,9 +324,9 @@ def f08(rows, out):
 
 def f09(rows, out):
     fig, (a, b) = plt.subplots(1, 2, figsize=(6.6, 3.0), sharey=True); meta = {}
-    for cfg, n, c, m, ls, lab in (("31_B2", 2, S1, "o", "-", "Replicas (2)"), ("31_1P1D", 2, S2, "s", "-", "1P1D")):
+    for cfg, n, c, m, ls, lab in (("31_B2", 2, S1, "o", "-", rep(2)), ("31_1P1D", 2, S2, "s", "-", "1P1D")):
         meta["chat_" + cfg] = range_series(a, by_rate(pick(rows, ("E5", "E7"), cfg, "sharegpt")), n, c, m, lab, ls)
-    for cfg, n, c, m, ls, lab in (("31_B2", 2, S1, "o", "-", "Replicas (2)"), ("31_B3", 3, S5, "o", LS3, "Replicas (3)"),
+    for cfg, n, c, m, ls, lab in (("31_B2", 2, S1, "o", "-", rep(2)), ("31_B3", 3, S5, "o", LS3, rep(3)),
                                   ("31_1P1D", 2, S2, "s", "-", "1P1D"), ("31_1P2D", 3, S3, "^", LS3, "1P2D"),
                                   ("31_2P1D", 3, S4, "D", LS3B, "2P1D")):
         g = by_rate(pick(rows, ("E5", "E7"), cfg, "random", inlen=4096))
@@ -341,14 +354,15 @@ def f10(rows, out):
             for suf, c, off in (("_B2", S1, -0.19), ("_1P1D", S2, 0.19)):
                 rs = [x for x in pick(rows, "E7", pre + suf, wl) if x["rate"] == rate]
                 v = st.mean([x["attain_chat"] for x in rs]); vals.append(v)
-                ax.bar(i + off, v, w, color=c)
+                hatched = MARK_CAUTION and any(x["safety"] == "주의" for x in rs)
+                ax.bar(i + off, v, w, color=c, hatch="////" if hatched else None, edgecolor="white" if hatched else None)
                 ax.text(i + off, v + 0.02, f"{v:.2f}", ha="center", fontsize=6.3)
             meta.append({"point": t, "precision": pl, "replicas": vals[0], "pd": vals[1]})
         slo_line(ax); ax.set_title(t); ax.set_xticks(range(3)); ax.set_xticklabels([p[0] for p in prec])
         ax.set_ylim(0, 1.13)
     axes[0].set_ylabel("Strict-SLO attainment")
     fig.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=S1), plt.Rectangle((0, 0), 1, 1, color=S2)],
-               labels=["Replicas (2)", "1P1D"], loc="lower center", bbox_to_anchor=(0.5, -0.08), ncol=2)
+               labels=[rep(2), "1P1D"], loc="lower center", bbox_to_anchor=(0.5, -0.08), ncol=2)
     fig.suptitle("26B on the same two g7e nodes (placement group), weight precision varied, measured the same day", x=0.01, ha="left",
                  fontsize=8, color=INK2, y=1.02)
     fig.tight_layout()

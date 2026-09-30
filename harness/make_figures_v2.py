@@ -369,10 +369,11 @@ def fig_proxy_gc(out, root="results/E8"):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", default="results/safe_runs.csv")
+    ap.add_argument("--rebuild", action="store_true", help="요청별 캐시를 항상 다시 만든다")
     ap.add_argument("-o", "--out", default="paper/figures_v2")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
-    cache = ss.load_cache(a.csv)
+    cache = ss.load_cache(a.csv, rebuild=a.rebuild)
     res = ss.sensitivity(cache)
     fig_chunk(cache, a.out)
     fig_h2h(cache, a.out)

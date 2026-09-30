@@ -13,7 +13,7 @@ Steps:
   3. SLO-free frontier: output tok/s per GPU vs request-level p90 TTFT and p90 of per-request max ITL
      (fig16).
 """
-import argparse, csv, glob, gzip, json, math, os
+import argparse, csv, glob, gzip, json, math, os, sys
 from collections import defaultdict
 
 CACHE = "results/per_request.json.gz"
@@ -49,9 +49,21 @@ def build_cache(safe_csv):
 
 
 def load_cache(safe_csv, rebuild=False):
+    """캐시가 safe_runs.csv(안전·주의 런과 그 등급)와 어긋나면 다시 만든다(3차 모의 심사 A16-1: 조용한 불일치 방지)."""
     if rebuild or not os.path.exists(CACHE):
         return build_cache(safe_csv)
-    return json.load(gzip.open(CACHE, "rt"))
+    cache = json.load(gzip.open(CACHE, "rt"))
+    want = {r["run_id"]: r["safety"] for r in csv.DictReader(open(safe_csv)) if r["safety"] in ("안전", "주의")}
+    have = {k: v["safety"] for k, v in cache.items()}
+    stale = any(want.get(k) != v for k, v in have.items())
+    missing = set(want) - set(have)
+    if missing and not stale:
+        runs_with_bench = {os.path.basename(os.path.dirname(p)) for p in glob.glob("results/*/*/bench.json")}
+        stale = bool(missing & runs_with_bench)
+    if stale:
+        print(f"{CACHE} does not match {safe_csv}; rebuilding", file=sys.stderr)
+        return build_cache(safe_csv)
+    return cache
 
 
 def goodput(run, T, B):
@@ -177,18 +189,43 @@ def supported(by_rate, gpus, T, B):
     return s
 
 
-def sensitivity(cache):
+# 같은 서빙 구성(모델·청크·UCX 설정 동일)을 프록시·세션별로 나눈 멤버 묶음. 3차 모의 심사 B6:
+# 절단(최고 측정 요청률에서도 통과) 판정만 묶음 전체의 최고 측정 요청률로 한다. 달성률과 굿풋은 멤버별 그대로.
+# 예: 26B 1P1D(P 청크 2,560)는 시험 프록시로 GPU당 6을 재서 무너졌으므로, aiohttp 변형의 GPU당 5 통과는 절단이 아니다.
+FAMILIES = {
+    "26b_4k_tuned": [["Replicas c2560 (2)", "Replicas c2560 (2) E8"], ["Replicas c1024 (2)", "Replicas c1024 (2) E9"],
+                     ["1P1D", "1P1D aio", "1P1D toy E8"]],
+    "31b_chat_tuned": [["Replicas c2560 (2)", "Replicas c2560 (2) E8"], ["Replicas c256 (2)", "Replicas c256 (2) E9"],
+                       ["1P1D", "1P1D aio", "1P1D aio E9"]],
+}
+
+
+def sensitivity(cache, merge_families=False):
+    """merge_families=False는 v2까지의 판정과 같다(멤버마다 따로 절단 판정)."""
     res = {}
     for key, title, members in GROUPS:
         g = {"title": title, "members": {}}
-        for lab, stages, cfg, wl, inl, n in members:
-            br = runs_for(cache, stages, cfg, wl, inl)
+        brs = {lab: (runs_for(cache, stages, cfg, wl, inl), n) for lab, stages, cfg, wl, inl, n in members}
+        top = {}
+        for fam in (FAMILIES.get(key, []) if merge_families else []):
+            m = max((max(brs[l][0]) for l in fam if l in brs and brs[l][0]), default=None)
+            for l in fam:
+                top[l] = m
+        for lab, (br, n) in brs.items():
             if not br:
                 continue
+            caps = [[capacity(br, n, T, B) for B in B_GRID] for T in T_GRID]
+            best_rate = [[max([r for r, rs in br.items() if min(attain(x, T, B) for x in rs) >= 0.9 and
+                               min(goodput(x, T, B) for x in rs) / n == caps[i][j][0]] or [None])
+                          for j, B in enumerate(B_GRID)] for i, T in enumerate(T_GRID)]
+            cens = [[c[1] for c in row] for row in caps]
+            if lab in top:
+                cens = [[caps[i][j][0] > 0 and best_rate[i][j] is not None and best_rate[i][j] >= top[lab]
+                         for j in range(len(B_GRID))] for i in range(len(T_GRID))]
             g["members"][lab] = {
                 "rates": list(br), "gpus": n,
-                "capacity": [[round(capacity(br, n, T, B)[0], 1) for B in B_GRID] for T in T_GRID],
-                "censored": [[capacity(br, n, T, B)[1] for B in B_GRID] for T in T_GRID],
+                "capacity": [[round(c[0], 1) for c in row] for row in caps],
+                "censored": cens,
                 "supported_per_gpu": [[supported(br, n, T, B) for B in B_GRID] for T in T_GRID],
             }
         res[key] = g

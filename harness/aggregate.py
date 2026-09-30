@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Collect every results/**/result.json (+ bench.json) into one flat CSV for sheets/plots.
-Usage: aggregate.py results/ -o results/all_runs.csv [--slo chat=ttft:1000,tbt:100 --slo doc=ttft:3000,tbt:400]
+Usage: aggregate.py results/ -o results/all_runs.csv [--slo chat=ttft:1000,tbt:50 --slo doc=ttft:3000,tbt:250]
+Default SLOs are the paper's strict (chat) and relaxed (doc) SLOs; before 2026-10-01 the defaults were tbt 100 and 400.
 One row per run: meta (stage/config/network/workload/rate/model/chunk), env (instance, iperf), bench summary, TBT-derived metrics.
 """
 import argparse, csv, glob, json, os, sys
@@ -11,7 +12,7 @@ def main():
     ap=argparse.ArgumentParser(); ap.add_argument("root"); ap.add_argument("-o","--out",required=True)
     ap.add_argument("--slo",action="append",default=[]); ap.add_argument("--tbt-stat",default="max")
     a=ap.parse_args()
-    slos=dict(parse_slo(s) for s in a.slo) or {"chat":{"ttft":1000,"tbt":100},"doc":{"ttft":3000,"tbt":400}}
+    slos=dict(parse_slo(s) for s in a.slo) or {"chat":{"ttft":1000,"tbt":50},"doc":{"ttft":3000,"tbt":250}}
     rows=[]
     for rj in sorted(glob.glob(os.path.join(a.root,"**","result.json"),recursive=True)):
         d=os.path.dirname(rj); bj=os.path.join(d,"bench.json")

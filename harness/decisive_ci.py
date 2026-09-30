@@ -1,28 +1,37 @@
 #!/usr/bin/env python3
 """판정을 가르는 지점의 달성률과 95% 구간(계층 부트스트랩: 반복 런을 복원 추출한 뒤 각 런 안에서 시간 블록 20개를 복원 추출).
-2차 모의 심사(R2-4, 좌장 A11) 대응. 사용: python3 harness/decisive_ci.py [--tex]
+2차 모의 심사(R2-4, 종합 심사자 A11) 대응. 3차 심사(A13-16)에서 30 ms 결정점과 3배의 근거 점을 더했다. 사용: python3 harness/decisive_ci.py [--tex] [--rebuild]
 판정 기준: 요청별 첫 토큰 ≤ T, 요청 내 최대 간격 ≤ B(출력 1토큰 요청은 간격 조건 통과). 캐시 results/per_request.json.gz(안전 런만).
 """
-import gzip, json, random, sys
+import os, random, sys
 
-C = json.load(gzip.open("results/per_request.json.gz", "rt"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import slo_sensitivity as ss  # noqa: E402
+
+# 캐시가 safe_runs.csv와 어긋나면 자동으로 다시 만든다. --rebuild면 항상 다시 만든다.
+C = ss.load_cache("results/safe_runs.csv", rebuild="--rebuild" in sys.argv)
 POINTS = [  # (label, workload, [(stages, config)], total rate, per-GPU, T, B_ms)
-    ("26B 4K, replicas chunk 1,024", "random", [(("E9",), "26_B2_c1024")], 8, 4, 1.0, 50),
-    ("26B 4K, replicas chunk 1,024", "random", [(("E9",), "26_B2_c1024")], 10, 5, 1.0, 50),
-    ("26B 4K, replicas chunk 512", "random", [(("E9",), "26_B2_c512")], 8, 4, 1.0, 50),
-    ("26B 4K, 1P1D aiohttp", "random", [(("E8",), "26_1P1D_aio")], 8, 4, 1.0, 50),
-    ("26B 4K, 1P1D test proxy", "random", [(("E5", "E7"), "26_1P1D"), (("E8",), "26_1P1D_toyi")], 8, 4, 1.0, 50),
-    ("26B 4K, 1P1D aiohttp, prefill chunk 8,192", "random", [(("E9",), "26_1P1D_aio_p8192")], 8, 4, 1.0, 50),
-    ("26B 4K, replicas chunk 512 (30 ms)", "random", [(("E9",), "26_B2_c512")], 4, 2, 1.0, 30),
-    ("26B 4K, 1P1D test proxy (30 ms)", "random", [(("E5", "E7"), "26_1P1D")], 4, 2, 1.0, 30),
-    ("26B FP8 4K, replicas chunk 512 (30 ms)", "random", [(("E9",), "26F_B2_c512")], 2, 1, 1.0, 30),
-    ("26B FP8 4K, 1P1D test proxy (30 ms)", "random", [(("E7",), "26F_1P1D")], 2, 1, 1.0, 30),
+    ("26B NVFP4 4K, replicas chunk 2,560", "random", [(("E5", "E7"), "26_B2"), (("E8",), "26_B2_c2560")], 2, 1, 1.0, 50),
+    ("26B NVFP4 4K, replicas chunk 2,560", "random", [(("E5", "E7"), "26_B2"), (("E8",), "26_B2_c2560")], 4, 2, 1.0, 50),
+    ("26B NVFP4 4K, 1P1D aiohttp", "random", [(("E8",), "26_1P1D_aio")], 6, 3, 1.0, 50),
+    ("26B NVFP4 4K, replicas chunk 1,024", "random", [(("E9",), "26_B2_c1024")], 8, 4, 1.0, 50),
+    ("26B NVFP4 4K, replicas chunk 1,024", "random", [(("E9",), "26_B2_c1024")], 10, 5, 1.0, 50),
+    ("26B NVFP4 4K, replicas chunk 512", "random", [(("E9",), "26_B2_c512")], 8, 4, 1.0, 50),
+    ("26B NVFP4 4K, 1P1D aiohttp", "random", [(("E8",), "26_1P1D_aio")], 8, 4, 1.0, 50),
+    ("26B NVFP4 4K, 1P1D test proxy", "random", [(("E5", "E7"), "26_1P1D"), (("E8",), "26_1P1D_toyi")], 8, 4, 1.0, 50),
+    ("26B NVFP4 4K, 1P1D aiohttp, prefill chunk 8,192, UCX segment sizes only", "random", [(("E9",), "26_1P1D_aio_p8192")], 8, 4, 1.0, 50),
+    ("26B NVFP4 4K, replicas chunk 512", "random", [(("E9",), "26_B2_c512")], 4, 2, 1.0, 30),
+    ("26B NVFP4 4K, replicas chunk 512", "random", [(("E9",), "26_B2_c512")], 6, 3, 1.0, 30),
+    ("26B NVFP4 4K, 1P1D test proxy", "random", [(("E5", "E7"), "26_1P1D")], 4, 2, 1.0, 30),
+    ("26B NVFP4 4K, 1P1D test proxy", "random", [(("E5", "E7"), "26_1P1D")], 6, 3, 1.0, 30),
+    ("26B NVFP4 4K, 1P1D aiohttp", "random", [(("E8",), "26_1P1D_aio")], 6, 3, 1.0, 30),
+    ("26B FP8 4K, replicas chunk 512", "random", [(("E9",), "26F_B2_c512")], 2, 1, 1.0, 30),
+    ("26B FP8 4K, 1P1D test proxy", "random", [(("E7",), "26F_1P1D")], 2, 1, 1.0, 30),
     ("31B chat, replicas chunk 256", "sharegpt", [(("E9",), "31_B2_c256")], 16, 8, 1.0, 50),
     ("31B chat, 1P1D aiohttp", "sharegpt", [(("E8", "E9"), "31_1P1D_aio")], 8, 4, 1.0, 50),
     ("31B chat, 1P1D test proxy", "sharegpt", [(("E5", "E7"), "31_1P1D")], 8, 4, 1.0, 50),
     ("31B chat, 1P1D aiohttp", "sharegpt", [(("E9",), "31_1P1D_aio")], 12, 6, 1.0, 50),
 ]
-
 
 def oks(r, T, B):
     return [(not e) and t <= T and (m is None or m * 1000 <= B) for t, m, e in zip(r["ttft"], r["maxitl"], r["err"])]
@@ -57,7 +66,9 @@ for lab, wl, srcs, rate, pg, T, B in POINTS:
         continue
     each = [sum(o) / len(o) for o in runs]
     lo, hi = hboot(runs)
-    rows.append((lab, pg, B, len(runs), each, lo, hi))
+    st = sorted({r["stage"] for rid, r in C.items() for stages, cfg in srcs
+                 if r["stage"] in stages and r["config"] == cfg and r["workload"] == wl and float(r["rate"]) == rate and r["safety"] == "안전"})
+    rows.append((f"{lab} ({', '.join(st)})", pg, B, len(runs), each, lo, hi))
 
 if "--tex" in sys.argv:
     for lab, pg, B, n, each, lo, hi in rows:
