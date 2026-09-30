@@ -31,7 +31,8 @@ warm(){ vllm bench serve --backend vllm --base-url "$BASE_URL" --model "$MODEL" 
 # serve_rep CFG MODEL CHUNK host...
 serve_rep(){ CFG=$1; local M=$2 C=$3; shift 3; stop_all; PREFILLERS=""; DECODERS=""
   # 청크를 2560 아래로 내릴 때만 0단계에서 찾은 MM_LIMIT·SERVE_EXTRA를 쓴다(2560 대조군은 E7과 똑같은 명령)
-  local mm="" ex=""; [ "$C" -lt 2560 ] && { mm=${MM_LIMIT:-}; ex=${SERVE_EXTRA:-}; }
+  # FORCE_MM=1이면 2560에서도 같은 MM_LIMIT를 쓴다(보충 측정: 2048 이상치가 MM 설정 차이인지 확인)
+  local mm="" ex=""; { [ "$C" -lt 2560 ] || [ "${FORCE_MM:-0}" = 1 ]; } && { mm=${MM_LIMIT:-}; ex=${SERVE_EXTRA:-}; }
   for h in "$@"; do rsh $h "MM_LIMIT='$mm' CHUNK=$C PREFIX=off PORT=8100 GPU_UTIL=0.90 harness/serve.sh $M $ex" | sed 's/^/    /' & done; wait
   local ups=() ok=1 hs=""; for h in "$@"; do ups+=("http://$h:8100"); done
   setsid nohup python3 harness/rr_proxy.py --port 8000 --upstreams "${ups[@]}" > results/rr_proxy_E8_$CFG.log 2>&1 </dev/null & disown
