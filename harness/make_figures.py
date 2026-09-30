@@ -136,7 +136,7 @@ def f01(rows, out):
     ax.text(51, 1.0, "50 ms", fontsize=7, color=INK2, va="top")
     ax.text(260, 0.905, "0.9", fontsize=7, color=INK2, va="bottom", ha="right")
     ax.set_xlabel("System-wide inter-token latency p99 (ms, log)")
-    ax.set_ylabel("Chat SLO attainment (per request)")
+    ax.set_ylabel("Strict-SLO attainment (per request)")
     ax.legend(loc="upper right", bbox_to_anchor=(1, 0.86))
     ax.set_title("System percentiles hide per-request stalls")
     bad = [p for p in pts["rep"] if p[0] < 50 and p[1] < 0.9]
@@ -162,7 +162,7 @@ def f02(rows, out):
     b.bar(xs, [d[2] for d in data], color=S2, width=0.55)
     for x, d in zip(xs, data):
         b.text(x, d[2] + 0.02, f"{d[2]:.2f}", ha="center", fontsize=7.3)
-    slo_line(b); b.set_ylim(0, 1.12); b.set_ylabel("Chat SLO attainment"); b.set_title("(b) Attainment")
+    slo_line(b); b.set_ylim(0, 1.12); b.set_ylabel("Strict-SLO attainment"); b.set_title("(b) Attainment")
     for ax in (a, b):
         ax.set_xticks(list(xs)); ax.set_xticklabels([d[0] for d in data])
         ax.set_xlabel("Sender rate limit (Gbps)")
@@ -233,7 +233,7 @@ def f05(rows, out):
         a.plot(range(3), [r["attain_chat"] for r in rs], color=c, marker=m, label=lab)
         b.plot(range(3), [r["attain_doc"] for r in rs], color=c, marker=m, label=lab)
         meta[cfg] = [(l, r["attain_chat"], r["attain_doc"]) for l, r in zip(L, rs)]
-    for ax, t in ((a, "(a) Chat SLO (1 s / 50 ms)"), (b, "(b) Document SLO (3 s / 250 ms)")):
+    for ax, t in ((a, "(a) Strict SLO (1 s / 50 ms)"), (b, "(b) Relaxed SLO (3 s / 250 ms)")):
         ax.set_xticks(range(3)); ax.set_xticklabels(["4K", "16K", "32K"]); ax.set_xlabel("Input length")
         slo_line(ax); ax.set_title(t); ax.set_ylim(-0.03, 1.05)
     a.set_ylabel("SLO attainment"); a.legend(loc="upper right")
@@ -263,7 +263,7 @@ def f06(rows, out):
             ax.text(x, v + 0.02, f"{v:.2f}", ha="center", fontsize=7.5)
         meta.append({"group": lab.replace("\n", " "), "replicas": a, "pd": b})
     slo_line(ax); ax.set_ylim(0, 1.12); ax.set_xticks(range(4))
-    ax.set_xticklabels([g[0] for g in groups]); ax.set_ylabel("Chat SLO attainment")
+    ax.set_xticklabels([g[0] for g in groups]); ax.set_ylabel("Strict-SLO attainment")
     ax.set_title("4K input at 1 req/s: replicas hold only with a fast GPU and light weights", fontsize=9)
     ax.legend(loc="upper left")
     save(fig, out, "fig06_gpu_speed_4k", meta)
@@ -279,7 +279,7 @@ def f07(rows, out):
         g = by_rate(pick(rows, stg, cfg, "sharegpt"))
         meta[cfg] = range_series(ax, g, 1, c, m, lab, LS3 if cfg.startswith("pro6000_26b_fp8_kvmatch") else "-")
     slo_line(ax); ax.set_ylim(-0.03, 1.05)
-    ax.set_xlabel("ShareGPT request rate, one GPU (req/s)"); ax.set_ylabel("Chat SLO attainment")
+    ax.set_xlabel("ShareGPT request rate, one GPU (req/s)"); ax.set_ylabel("Strict-SLO attainment")
     ax.set_title("Single node, 26B FP8: supported load 1 vs 16 req/s at equal KV")
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=7.5)
     save(fig, out, "fig07_gpu_kv", meta)
@@ -298,7 +298,7 @@ def f08(rows, out):
         meta["chat_" + cfg] = range_series(b, gc, n, c, m, lab, ls, caution)
     a.set_title("(a) 4K input"); b.set_title("(b) ShareGPT chat")
     a.set_xlabel("Request rate per GPU (req/s)"); b.set_xlabel("Request rate per GPU (req/s)")
-    a.set_ylabel("Chat SLO attainment")
+    a.set_ylabel("Strict-SLO attainment")
     for ax in (a, b):
         slo_line(ax); ax.set_ylim(-0.03, 1.05)
     b.text(0.98, 0.04, "hollow marker: client-limited, not used for verdicts", transform=b.transAxes, ha="right", fontsize=7, color=INK2)
@@ -321,7 +321,7 @@ def f09(rows, out):
             meta["4k_" + cfg] = range_series(b, g, n, c, m, lab, ls)
     a.set_title("(a) ShareGPT chat"); b.set_title("(b) 4K input")
     a.set_xlabel("Request rate per GPU (req/s)"); b.set_xlabel("Request rate per GPU (req/s)")
-    a.set_ylabel("Chat SLO attainment")
+    a.set_ylabel("Strict-SLO attainment")
     for ax in (a, b):
         slo_line(ax); ax.set_ylim(-0.03, 1.05)
     a.legend(loc="lower left"); b.legend(loc="upper right", fontsize=7.5)
@@ -346,7 +346,7 @@ def f10(rows, out):
             meta.append({"point": t, "precision": pl, "replicas": vals[0], "pd": vals[1]})
         slo_line(ax); ax.set_title(t); ax.set_xticks(range(3)); ax.set_xticklabels([p[0] for p in prec])
         ax.set_ylim(0, 1.13)
-    axes[0].set_ylabel("Chat SLO attainment")
+    axes[0].set_ylabel("Strict-SLO attainment")
     fig.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=S1), plt.Rectangle((0, 0), 1, 1, color=S2)],
                labels=["Replicas (2)", "1P1D"], loc="lower center", bbox_to_anchor=(0.5, -0.08), ncol=2)
     fig.suptitle("26B on the same two g7e nodes (placement group), weight precision varied, measured the same day", x=0.01, ha="left",
@@ -376,7 +376,7 @@ def f11(rows, out):
         ax.text(2.0, -0.30, "26B NVFP4", transform=ax.get_xaxis_transform(), ha="center", fontsize=7.3, color=INK)
         ax.text(5.5, -0.30, "31B NVFP4", transform=ax.get_xaxis_transform(), ha="center", fontsize=7.3, color=INK)
     a.set_ylabel("TTFT p50 (ms)"); a.set_title("(a) First token")
-    b.set_ylabel("Chat SLO attainment"); b.set_ylim(0, 1.08); slo_line(b); b.set_title("(b) Attainment")
+    b.set_ylabel("Strict-SLO attainment"); b.set_ylim(0, 1.08); slo_line(b); b.set_title("(b) Attainment")
     fig.suptitle("Azure conversation trace, 600 requests (input median 996, output 217 tokens); x labels give the replayed rate", x=0.01,
                  ha="left", fontsize=8, color=INK2, y=1.02)
     fig.tight_layout()
@@ -449,7 +449,7 @@ def f13(rows, out):
     ax.set_yticks(range(len(keys)))
     ax.set_yticklabels([f"{nice(k[0])} · {wl[k[1]]} · {k[2]} req/s" for k in keys], fontsize=7)
     ax.axvline(0.9, color=INK2, lw=1, ls=(0, (4, 3))); ax.set_xlim(0.3, 1.02)
-    ax.set_xlabel("Chat SLO attainment"); ax.grid(axis="y", visible=False)
+    ax.set_xlabel("Strict-SLO attainment"); ax.grid(axis="y", visible=False)
     ax.legend(handles=[Line2D([0], [0], marker="o", color=S1, lw=0), Line2D([0], [0], marker="D", mfc="white", mec=S2, lw=0)],
               labels=["Repeat (seed varied)", "Single run, previous day"], loc="lower right")
     ax.set_title("Repeats only disagree near the 0.9 threshold (shaded 0.85–0.95)")
@@ -470,7 +470,7 @@ def f14(rows, out):
         ax.set_xticks([0, 1]); ax.set_xticklabels(["0.25 req/s", "0.5 req/s"])
     a.set_ylabel("TTFT p50 (ms)"); a.set_title("(a) First token")
     fig.legend(*a.get_legend_handles_labels(), loc="lower center", bbox_to_anchor=(0.5, -0.1), ncol=2)
-    b.set_ylabel("Chat SLO attainment"); b.set_ylim(0, 1.05); slo_line(b); b.set_title("(b) Attainment")
+    b.set_ylabel("Strict-SLO attainment"); b.set_ylim(0, 1.05); slo_line(b); b.set_title("(b) Attainment")
     fig.suptitle("31B NVFP4 1P1D, 4K input: push trims the median, not the SLO", x=0.01, ha="left",
                  fontsize=8, color=INK2, y=1.02)
     fig.tight_layout()
