@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """세션 E8 요약표: 런마다 대화 SLO 달성률(첫 토큰 ≤1 s, 요청 내 최대 간격 ≤50 ms), 첫 토큰 p50,
 요청별 최대 간격 p50/p90, 전역 정지 수(50 ms 넘는 간격이 5 ms 안에 15요청 이상), 정지를 뺀 달성률.
-사용: e8_summary.py [results/E8]   (출력: 마크다운 표)
+사용: e8_summary.py [results/E8] [E8]   (출력: 마크다운 표. 두 번째 인자는 세션 이름, E9 등)
 """
 import glob, json, os, re, sys
 
 root = sys.argv[1] if len(sys.argv) > 1 else "results/E8"
+stage = sys.argv[2] if len(sys.argv) > 2 else "E8"
 
 
 def q(a, p):
@@ -14,11 +15,11 @@ def q(a, p):
 
 
 rows = []
-for d in sorted(glob.glob(os.path.join(root, "*_E8_*"))):
+for d in sorted(glob.glob(os.path.join(root, f"*_{stage}_*"))):
     f = os.path.join(d, "bench.json")
     if not os.path.isfile(f):
         continue
-    m = re.match(r".*?(\d{4}-\d{2}-\d{2}T\d{6}Z)_E8_(.+)_N0_(\w+)_r([\d.]+)$", d)
+    m = re.match(r".*?(\d{4}-\d{2}-\d{2}T\d{6}Z)_" + stage + r"_(.+)_N0_(\w+)_r([\d.]+)$", d)
     if not m:
         continue
     ts, cfg, wl, rate = m.groups()
