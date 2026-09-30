@@ -452,7 +452,7 @@ def f13(rows, out):
     ax.set_xlabel("Strict-SLO attainment"); ax.grid(axis="y", visible=False)
     ax.legend(handles=[Line2D([0], [0], marker="o", color=S1, lw=0), Line2D([0], [0], marker="D", mfc="white", mec=S2, lw=0)],
               labels=["Repeat (seed varied)", "Single run, previous day"], loc="lower right")
-    ax.set_title("Repeats only disagree near the 0.9 threshold (shaded 0.85–0.95)")
+    ax.set_title("Disagreement between repeats flips the verdict only near 0.9 (shaded 0.85–0.95)")
     save(fig, out, "fig13_repeatability", meta)
 
 
