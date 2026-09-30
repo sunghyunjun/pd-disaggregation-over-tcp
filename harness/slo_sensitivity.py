@@ -57,14 +57,14 @@ def load_cache(safe_csv, rebuild=False):
 def goodput(run, T, B):
     tok = 0
     for t, m, ol, e in zip(run["ttft"], run["maxitl"], run["outlen"], run["err"]):
-        if not e and m is not None and t <= T and m * 1000 <= B:
+        if not e and t <= T and (m is None or m * 1000 <= B):   # 1토큰 출력(간격 없음)은 간격 조건 통과(2026-09-30 수정)
             tok += ol
     return tok / run["duration"]
 
 
 def attain(run, T, B):
     ok = sum(1 for t, m, e in zip(run["ttft"], run["maxitl"], run["err"])
-             if not e and m is not None and t <= T and m * 1000 <= B)
+             if not e and t <= T and (m is None or m * 1000 <= B))
     return ok / len(run["ttft"])
 
 
@@ -81,6 +81,30 @@ GROUPS = [
       ("1P1D", ("E5", "E7"), "26_1P1D", "random", "4096", 2),
       ("1P2D", ("E5", "E7"), "26_1P2D", "random", "4096", 3),
       ("2P1D", ("E5", "E7"), "26_2P1D", "random", "4096", 3)]),
+    # 세션 E8: 복제본 청크 변형을 넣은 비교(복제본 쪽 최선 = 청크를 조정한 복제본). 라벨이 "Replicas"로 시작하면 복제본 쪽.
+    ("26b_4k_tuned", "26B NVFP4 · 4K\nchunk-tuned replicas",
+     [("Replicas c2560 (2)", ("E5", "E7"), "26_B2", "random", "4096", 2),
+      ("Replicas c2560 (2) E8", ("E8",), "26_B2_c2560", "random", "4096", 2),
+      ("Replicas c2048 (2)", ("E8",), "26_B2_c2048", "random", "4096", 2),
+      ("Replicas c1536 (2)", ("E8",), "26_B2_c1536", "random", "4096", 2),
+      ("Replicas c1024 (2)", ("E8",), "26_B2_c1024", "random", "4096", 2),
+      ("Replicas (3)", ("E5", "E7"), "26_B3", "random", "4096", 3),
+      ("1P1D", ("E5", "E7"), "26_1P1D", "random", "4096", 2),
+      ("1P1D aio", ("E8",), "26_1P1D_aio", "random", "4096", 2),
+      ("1P1D toy E8", ("E8",), "26_1P1D_toyi", "random", "4096", 2),
+      ("1P2D", ("E5", "E7"), "26_1P2D", "random", "4096", 3),
+      ("2P1D", ("E5", "E7"), "26_2P1D", "random", "4096", 3)]),
+    ("31b_chat_tuned", "31B NVFP4 · ShareGPT\nchunk-tuned replicas",
+     [("Replicas c2560 (2)", ("E5", "E7"), "31_B2", "sharegpt", None, 2),
+      ("Replicas c2560 (2) E8", ("E8",), "31_B2_c2560", "sharegpt", None, 2),
+      ("Replicas c512 (2)", ("E8",), "31_B2_c512", "sharegpt", None, 2),
+      ("Replicas c256 (2)", ("E8",), "31_B2_c256", "sharegpt", None, 2),
+      ("1P1D", ("E5", "E7"), "31_1P1D", "sharegpt", None, 2),
+      ("1P1D aio", ("E8",), "31_1P1D_aio", "sharegpt", None, 2)]),
+    ("26f_4k_tuned", "26B FP8 · 4K\nchunk-tuned replicas",
+     [("Replicas c2560 (2)", ("E7",), "26F_B2", "random", "4096", 2),
+      ("Replicas c1024 (2)", ("E8",), "26F_B2_c1024", "random", "4096", 2),
+      ("1P1D", ("E7",), "26F_1P1D", "random", "4096", 2)]),
     ("26b_chat", "26B NVFP4 · ShareGPT\ng7e, placement group",
      [("Replicas (2)", ("E5", "E7"), "26_B2", "sharegpt", None, 2),
       ("Replicas (3)", ("E5", "E7"), "26_B3", "sharegpt", None, 3),
