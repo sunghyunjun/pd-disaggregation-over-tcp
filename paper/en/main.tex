@@ -16,20 +16,20 @@
 \usepackage{float}
 \usepackage[section]{placeins}
 \setlist{itemsep=2pt,topsep=4pt}
-\graphicspath{{../figures_v3/}}
+\graphicspath{{../figures_v4/}}
 \newcommand{\todo}[1]{\textcolor{orange}{[#1]}}
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
 
-\title{Chunked Prefill or Disaggregation?\\
-\large Prefill--Decode Serving over TCP on Single-GPU Cloud Instances}
+\title{Chunk First: When Prefill--Decode Disaggregation Pays Off over TCP\\
+\large Measurements and a Calibrated Boundary on Single-GPU Cloud Instances}
 \author{Sunghyun Jun\\ Independent Researcher\\ \todo{contact email}}
-\date{\todo{draft v3, 2026-10-01}}
+\date{\todo{draft v4, 2026-10-01}}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Prefill--decode disaggregation usually needs RDMA or NVLink, which cheap single-GPU instances lack; we ask when, over TCP, it beats colocated replicas with chunked prefill. On AWS 2xlarge instances we served Gemma~4 26B (mixture of experts) and 31B (dense) with stock vLLM and NIXL/UCX, judging each request by its time to first token (TTFT) and longest inter-token gap. A replica stalls when another request's prefill shares its step, so the chunk size bounds that gap: for 26B with 4K inputs, its median fell from 48~ms at a 2,560-token chunk to 21~ms at 512. Under a 1~s TTFT and 50~ms gap limit, disaggregation served about 3$\times$ more requests per GPU than 26B replicas held at 2,560 tokens, near the floor vLLM set for multimodal Gemma~4. Against smaller chunks, no limit pair we could rank favored it, down to 30~ms gaps: for 26B it was borderline at 4 requests/s per GPU while replicas supported 5; for 31B chat, borderline at 4 against at least 8. Its TTFT cost was mostly KV transfer, which a larger UCX segment made 3.4$\times$ faster at low load. Tune the chunk first; disaggregate when no workable chunk meets the gap limit.
+Prefill--decode disaggregation usually relies on RDMA or NVLink, which cheap single-GPU cloud instances lack. For a fleet of such instances linked by TCP, we ask whether disaggregation is worth considering once chunked prefill, which attacks the same decode stalls, is tuned. Serving Gemma~4 26B and 31B with stock vLLM and NIXL/UCX on AWS, we measured both costs: a replica's longest inter-token gap follows the chunk size (for 26B with 4K inputs, 48~ms at 2,560 tokens and 21~ms at 512), and disaggregation's added time to first token (TTFT) was mostly KV transfer, which a larger UCX segment made 3.4$\times$ faster at low load. At 4K inputs and in chat, tuned chunks left no SLO we could rank in which disaggregation served more; it won, by about 3$\times$ for 26B, only against replicas held at 2,560 tokens, as vLLM requires for Gemma~4 with video input. A step-time model calibrated on our runs (out-of-sample TTFT within 8\%) predicts where chunking runs out: a chunk small enough for a 50~ms gap needs so many steps that, beyond roughly 20K input tokens, only disaggregation meets both limits, provided the KV cache is small, as with hybrid attention. Tune the chunk first; consider disaggregation over TCP for long inputs with small KV caches.
 \end{abstract}
 
 \section{Introduction}
@@ -38,22 +38,24 @@ Serving a request to a large language model takes two phases: \emph{prefill}, wh
 
 Disaggregation pays for its isolation with a KV-cache transfer, and published systems run that transfer over fast links: InfiniBand~\cite{splitwise}, RDMA~\cite{mooncake}, or NVLink inside one node~\cite{distserve}. The cheapest single-GPU cloud instances offer none of these. On AWS, the 2xlarge sizes of the g6e, g7, and g7e families have one GPU, no Elastic Fabric Adapter (EFA), and no ENA Express~\cite{awsspecs}; the 8xlarge sizes of the same families add EFA at roughly 1.6--2$\times$ the hourly price~\cite{awsefa,vantage}. Public documentation discourages disaggregation over TCP: llm-d calls it ``extremely slow'' and ``targeted for local development''~\cite{llmddocs}, and NVIDIA Dynamo warns of a 200--500$\times$ slower TTFT without RDMA and recommends aggregated serving instead~\cite{dynamodocs}. Few public measurements show how slow the TCP path is, or whether disaggregation over it still beats a well-configured colocated deployment.
 
-We measured both remedies on the same hardware. We served two Gemma~4 models with stock vLLM on one to three single-GPU instances, disaggregated them with vLLM's NIXL connector over UCX's TCP transport, and judged each request against a service-level objective (SLO) on its TTFT and on the longest gap between its output tokens. Our first comparison pitted disaggregation against replicas at a 2,560-token chunk, the smallest our stack accepted with images disabled. Two rounds of AI-assisted mock peer review found that this baseline was handicapped twice: disabling every modality allows smaller chunks, and the replicas' request proxy capped concurrent connections at 100. We added two sessions (E8 and E9) that swept the chunk size and removed the cap, and we committed our predictions for E9 before running it; a third round reviewed the revised draft. These sessions changed the conclusion, and we report both baselines.
+Our question comes from scaling out on such instances. A fleet of single-GPU nodes linked by TCP has several levers against prefill interference and repeated prefill work: chunked prefill, disaggregation, prefix-cache-aware routing as in llm-d~\cite{llmdarch}, and KV-cache offloading as in LMCache~\cite{lmcache}. Chunked prefill and disaggregation attack the same problem, the decode stalls that other requests' prefills cause, and only disaggregation pays for its fix with a network transfer. We therefore ask whether disaggregation over TCP is worth considering at all once the chunk size is tuned, and if so, where.
+
+We measured both remedies on the same hardware. We served two Gemma~4 models with stock vLLM on one to three single-GPU instances, disaggregated them with vLLM's NIXL connector over UCX's TCP transport, and judged each request against a service-level objective (SLO) on its TTFT and on the longest gap between its output tokens. Our first comparison used replicas at a 2,560-token chunk, the smallest our stack accepted with images disabled. Two rounds of AI-assisted mock peer review found that disabling every modality allows smaller chunks and that the replicas' request proxy capped concurrent connections at 100; we added two sessions (E8 and E9) that swept the chunk size and removed the cap, and we committed our predictions for E9 before running it. Our tuned-chunk measurements stop at 4K-token inputs, so for longer inputs we calibrate a step-time model on the measured runs and use it to locate the boundary.
 
 We ask three research questions (RQs):
 \begin{itemize}
-  \item \textbf{RQ1.} Under a per-request limit on the longest token gap, what sets the stalls of colocated replicas, and how far does chunked prefill go?
-  \item \textbf{RQ2.} Over TCP, what does disaggregation cost in TTFT, and what determines that cost?
-  \item \textbf{RQ3.} At equal GPU count, when does disaggregation over TCP serve more SLO-meeting load than tuned colocation?
+  \item \textbf{RQ1.} How large are the two costs on cloud hardware: the stall that a prefill chunk imposes on colocated decodes, and the TTFT that a KV transfer over TCP adds?
+  \item \textbf{RQ2.} At the input lengths we measured (4K tokens and chat), does a tuned chunk leave any SLO in which disaggregation over TCP serves more per GPU?
+  \item \textbf{RQ3.} Where does chunked prefill run out, and what decides whether disaggregation over TCP can take over there?
 \end{itemize}
-In short: the chunk size sets the stall; the KV transfer sets disaggregation's TTFT cost; and no SLO that our measured rates could rank favored disaggregation over TCP against replicas with a tuned chunk. Disaggregation won only against replicas held at 2,560 tokens (about 3$\times$ for 26B with 4K inputs).
+In short: a chunk of 512--1,024 tokens kept the 26B replicas' median longest gap at 21--28~ms, and disaggregation's added TTFT was 61--85\% KV transfer at low load (RQ1). At 4K inputs and in chat, no SLO that our measured rates could rank favored disaggregation; it won only when the chunk could not shrink (RQ2). Our model predicts that chunking runs out for long inputs, near 20K tokens at a 50~ms gap limit for 26B FP8, and that disaggregation over TCP can take over there only if the KV cache is small, as with hybrid attention (RQ3).
 
 Our contributions are:
 \begin{itemize}
-  \item a joint evaluation of chunk size and disaggregation under per-request stall limits, with a map of which side serves more as the SLO changes (Sections~\ref{sec:chunk}--\ref{sec:who});
-  \item a characterization of the KV transfer over cloud TCP: the UCX segment size, NIXL's splitting of a transfer over up to four connections, the cloud's per-flow cap, and a KV-volume and TTFT model (Sections~\ref{sec:transfer}--\ref{sec:ttft});
-  \item four pitfalls that can change a verdict: percentile metrics hide per-request stalls; a multimodal budget check kept Gemma~4's chunk at 2,496 tokens or more until we disabled every modality; vLLM's test proxy for NIXL paused all streams in our runs during garbage collection; and an HTTP client's default connection limit throttled the replicas (Sections~\ref{sec:stalls}, \ref{sec:chunk}, \ref{sec:proxy});
-  \item the harness, per-request data of all runs, and the three rounds of mock review with the analyses they prompted.
+  \item measured sizes of both costs on rented single-GPU nodes, including the TCP transfer path: the UCX segment size, NIXL's splitting of a transfer over up to four connections, the cloud's per-flow cap, and a KV-volume and TTFT model (Section~\ref{sec:costs});
+  \item a head-to-head at equal GPU count with tuned chunks, a map over 192 SLOs, and the exception when the chunk cannot shrink (Section~\ref{sec:h2hsec});
+  \item a step-time model, calibrated on measured runs and checked against measurements it was not fitted to, that locates where chunked prefill runs out and shows how input length, gap limit, KV size, and link speed move that boundary (Section~\ref{sec:boundary});
+  \item a procedure that places disaggregation among chunk tuning, prefix-aware routing, and KV offloading; four measurement pitfalls; and the harness, per-request data, and mock reviews (Sections~\ref{sec:procedure-fleet} and~\ref{sec:proxy}).
 \end{itemize}
 
 \section{Background and Related Work}
@@ -64,9 +66,11 @@ Our contributions are:
 
 \paragraph{KV transfer layer.} vLLM~\cite{vllm} moves the KV cache with NIXL~\cite{nixl}, which wraps transports including UCX~\cite{ucx}; without RDMA, UCX uses TCP. CacheGen compresses the KV cache to reduce network traffic~\cite{cachegen}. Prefill-as-a-Service sends the small KV caches of hybrid-attention models between datacenters over commodity Ethernet~\cite{prfaas}, and PDD disaggregates across clusters linked by wide-area TCP~\cite{pdd}. The llm-d project measured GPU-to-GPU transfers over 100~Gbps TCP at 0.55~GB/s with UCX and 4.7--4.9~GB/s with UCCL~\cite{llmdblog}. Mitra et al.\ find disaggregation most effective for prefill-heavy traffic and larger models~\cite{beyondbuzz}.
 
+\paragraph{Reusing and placing KV caches.} Prefix-cache-aware routing sends a request to the replica that already holds its prefix, so the prefill shrinks without moving any KV cache; llm-d's scheduler scores replicas by KV-cache affinity~\cite{llmdarch}. LMCache stores KV caches outside the engine and shares them across engines and queries~\cite{lmcache}; loading a KV cache from another node is a transfer of the same size as a disaggregated one. We did not measure either; Section~\ref{sec:procedure-fleet} uses our transfer measurements to reason about them.
+
 \paragraph{Metrics.} Etalon argues that TTFT, time between tokens, and their percentiles miss what users experience and proposes a fluidity index~\cite{etalon}; Andes defines a quality of experience over each request's token delivery timeline~\cite{andes}. We use a simpler per-request criterion, the longest gap between consecutive output tokens.
 
-\paragraph{Where this work sits.} We do not design a system. We measure stock vLLM on rented single-GPU nodes, compare disaggregation with colocated replicas whose chunk size we tune, and explain the transfer path. We did not find a measurement of this setting, but our search was not exhaustive.
+\paragraph{Where this work sits.} We do not design a system. We measure stock vLLM on rented single-GPU nodes, compare disaggregation with colocated replicas whose chunk size we tune, explain the transfer path, and calibrate a simple model to say where the comparison turns. We did not find a measurement of this setting, but our search was not exhaustive.
 
 \section{Methodology}
 
@@ -115,9 +119,9 @@ The thresholds are design choices. TTFT targets in prior work range from 0.125~s
 \subsection{Procedure, data selection, and statistics}\label{sec:procedure}
 All reported runs had the prefix cache disabled. Some early runs had it enabled while replaying the same seeded requests, so later points hit cache entries left by earlier ones; we excluded those 122 runs, 5 server-start failures, and 1 discarded run, 128 of 455 runs. Fourteen runs are caution data and not used for verdicts: 5 in which the client-side proxy reached its CPU limit (two of them replica runs that also reached the connection cap) and 9 replica runs that reached the proxy's connection cap. The remaining 313 runs are the \emph{audited} runs. Sessions E7--E9 warmed every server with 30 requests; earlier sessions did not, and dropping each run's first five requests raised attainment by at most 0.019, lowered it by at most 0.029, and flipped no verdict.
 
-Median TTFT varied by up to 10\% across repeats. Points well above 0.9 attainment varied by at most 0.03 within a session; points near 0.9 varied by up to $\pm$0.10 and could flip a verdict, and we call a point \emph{borderline} if any repeat falls between 0.85 and 0.95; low points varied more (0.37--0.64). For decisive points we report 95\% intervals from a hierarchical bootstrap that resamples repeats and then 20 time blocks within each run (Appendix~\ref{app:ci}). Disaggregated runs with vLLM's test proxy, whose garbage collection paused streams (Section~\ref{sec:proxy}), remain in the data; where both proxies were measured, verdicts use the better of the two. Disaggregated serving gave the same outputs as a single node, within the nondeterminism that 26B showed even on one node (Appendix~\ref{app:other}). We wrote the predictions for session E9 into our lab notebook and committed them before the session (Appendix~\ref{app:prereg}). Appendix~\ref{app:data} maps sessions to data folders.
+Median TTFT varied by up to 10\% across repeats. Points well above 0.9 attainment varied by at most 0.03 within a session; points near 0.9 varied by up to $\pm$0.10 and could flip a verdict, and we call a point \emph{borderline} if any repeat falls between 0.85 and 0.95; low points varied more (0.37--0.64). For decisive points we report 95\% intervals from a hierarchical bootstrap that resamples repeats and then 20 time blocks within each run (Appendix~\ref{app:ci}). Disaggregated runs with vLLM's test proxy, whose garbage collection paused streams (Section~\ref{sec:proxy}), remain in the data; where both proxies were measured, verdicts use the better of the two. Disaggregated serving gave the same outputs as a single node, within the nondeterminism that 26B showed even on one node (Appendix~\ref{app:other}). We wrote the predictions for session E9 into our lab notebook and committed them before the session (Appendix~\ref{app:prereg}). Appendix~\ref{app:data} maps sessions to data folders. Section~\ref{sec:boundary} fits a model to existing runs only and adds no measurements.
 
-\section{Results}
+\section{Measured costs}\label{sec:costs}
 
 \subsection{System percentiles hide per-request stalls}\label{sec:stalls}
 
@@ -140,58 +144,6 @@ The system-wide p99 of inter-token latency pools every gap of every request, and
 A replica stalls when another request's prefill joins the step, and the stall lasts as long as that step. With 4K inputs and 512 outputs almost every request overlaps another request's prefill, so its longest gap is roughly the time of a step that carries a full chunk. For 26B NVFP4 that time fell with the chunk (Figure~\ref{fig:chunk}a): the median longest gap was 48.4~ms at 2,560 tokens, 38.8~ms at 1,536, 27.6~ms at 1,024, and 21.4~ms at 512, while median TTFT rose from 132 to 205~ms. Between 1,024 and 2,048 tokens the step grew by about 24~\textmu s per token; below 1,024 it shrank more slowly toward the decode-only step, about 9~ms at this load. The 2,560-token median sat 1.6~ms under the 50~ms limit, so the replicas' verdicts at that chunk hinged on a small margin. A 2,048-token chunk gave 52.3~ms, longer than 2,560; we could not tell whether the even split of a 4K input into two 2,048-token pieces or the different multimodal setting of the 2,560 control causes this.
 
 Heavier FP8 weights make each step longer: at 0.5 requests/s per GPU the median longest gap was 62, 43, and 27~ms at 2,560, 1,024, and 512 tokens, with attainment 0.13, 0.99, and 1.00 (Figure~\ref{fig:chunk}b). For 31B chat the longest gap depends on the longest prompt prefilled on the same replica while a request decodes (Figure~\ref{fig:chunk}c). In the five 2,560-token runs at 1 request/s per GPU, 99--100\% of requests kept every gap under 50~ms when that prompt had fewer than 200 tokens, 42\% with 200--400 tokens, 12\% with 400--800, and almost none above 800 (1 of 323). A 512-token chunk therefore did not help (attainment 0.44, the same as 2,560), and a 256-token chunk did (1.00 in two runs, median longest gap 34~ms, TTFT unchanged at 79~ms).
-
-\subsection{Head to head at equal GPU count}\label{sec:h2h}
-
-\begin{figure}[!htbp]
-\centering\includegraphics[width=\linewidth]{v1_head_to_head.pdf}
-\caption{Strict-SLO attainment against load on two g7e nodes in a placement group. Blue: replicas at a 2,560-token chunk (light, dotted), 1,024 (dark, solid), or 512 for 26B and 256 for 31B (dark, dash-dot); runs that reached the proxy's connection cap are excluded, and the 1,024-token points at 4 requests/s per GPU and above come from E9. Orange and brown: 1P1D with vLLM's test proxy (light, dashed), our aiohttp proxy (dark, solid), or our aiohttp proxy with an 8,192-token prefill chunk (brown, long dashes; these runs set only the UCX segment sizes). Lines connect the mean of repeats; vertical bars span the minimum and maximum; series are shifted slightly along the x axis so that the bars do not overlap. Hollow markers: some repeat below 0.9, so the point fails the verdict rule. The test-proxy line in (a) joins 4 and 6 requests/s per GPU directly (5 was not measured). The dashed horizontal line is 0.9. The 2,048- and 1,536-token replicas are omitted for readability.}
-\label{fig:h2h}
-\end{figure}
-
-\begin{table}[!htbp]
-\centering\small
-\begin{tabularx}{\linewidth}{lLLL}
-\toprule
-Workload & Replicas, chunk 2,560 & Replicas, best chunk & 1P1D (aiohttp proxy) \\
-\midrule
-26B NVFP4, 4K & 1$^\dagger$, \$2.00, 132~ms & 5 (1,024), \$0.38, 259--278~ms & 3, \$0.63, 366~ms (failed 4 narrowly) \\
-26B FP8, 4K & none & $\ge$1 (512 or 1,024), $\le$\$1.87, 199--247~ms & $\ge$1, $\le$\$1.88, 384~ms \\
-31B NVFP4, chat & none & $\ge$8 (256), $\le$\$0.67, 117~ms & 4$^\dagger$, \$1.67, 303--308~ms \\
-\bottomrule
-\end{tabularx}
-\caption{Supported load under the strict SLO (requests/s per GPU; every repeat $\ge$0.9), cost per million SLO-meeting output tokens at that load (g7e, \$3.363 per GPU-hour, client excluded), and median TTFT at that load. ``$\ge$'' and ``$\le$'': the configuration still passed at the highest rate we measured; for 31B replicas that is one run at 8, and the run at 6 reached the proxy's connection cap and is caution data. $^\dagger$~Passed, but borderline (a repeat within 0.85--0.95). The 26B FP8 1P1D value uses vLLM's test proxy, the only one measured; with the test proxy, 31B 1P1D failed at 4 (0.885).}
-\label{tab:cost}
-\end{table}
-
-Measured against replicas at a 2,560-token chunk, disaggregation looked decisive (Figure~\ref{fig:h2h}, dotted lines). For 26B with 4K inputs, replicas passed 1 request/s per GPU narrowly (0.933--0.958 in five runs) and failed at 2 (0.37--0.64), while 1P1D passed 3; the cost per SLO-meeting token was \$2.00 against \$0.63 (Table~\ref{tab:cost}). For 26B FP8 and for 31B chat, 2,560-token replicas met the strict SLO at no measured load, while 1P1D did.
-
-Measured against replicas at a tuned chunk, the result reverses: for 26B with 4K inputs, 1,024-token replicas supported 5 requests/s per GPU and 1P1D 3. Without the proxy cap, the replicas passed 4 and 5 in every repeat and collapsed at 6 (0.19), with a small margin at 5 (longest gaps of 46.3 and 47.1~ms); 512-token replicas passed 1--4. 1P1D was borderline at 4 (0.885--0.992 with our aiohttp proxy, 0.77--0.98 with the test proxy) and collapsed at 5 (0.18) as prefills queued and gaps grew. Appendix Table~\ref{tab:ci} lists every repeat with its interval.
-
-A larger prefill chunk did not change these verdicts. Raising it to 8,192 tokens, in runs that also set only the UCX segment sizes, cut 1P1D's median TTFT at 4 requests/s per GPU from about 500 to 416--451~ms, but attainment stayed at 0.874 and 0.976 at 4 and 0.365 at 5. Its transfers were slower than with the seven-variable set at the same seeds (transfer-weighted means of 165--190 against 119--140~ms), so the gain came from the prefill side. At 5 the prefill node kept up, and KV transfers queued instead (transfer-weighted mean 0.92~s against 0.18~s with a 2,560-token prefill chunk) at an offered KV traffic of 11.7~Gbps. Because these runs changed two settings, we do not attribute the slowdown.
-
-The decode node's double load did not lengthen the gaps that decided the 26B verdicts; for 31B chat it slowed the decode steps. At equal GPU count, 1P1D's decode node carries the decodes of both GPUs. For 26B with 4K inputs, at 3 and 4 requests/s per GPU its mean time per output token (15.7 and 20.5--20.9~ms) matched that of 1,024-token replicas (16.7 and 20.7--20.9~ms), and its median longest gap was shorter (27.6 against 33.8~ms at 3), because no prefill entered its decode steps; it failed at 4 on the TTFT tail (p99 0.97--1.25~s against 0.39--0.46~s) and on rare decode-server pauses (Section~\ref{sec:proxy}). For 31B chat the fixed 1:1 split was unbalanced: short prompts kept the prefill GPU's streaming multiprocessors active only about 30\% of the time at 4 requests/s per GPU (41\% at 6) against 100\% on the decode node, and at 4 the decode node's mean time per output token was 32--33~ms against 30~ms for 256-token replicas.
-
-For 31B chat, tuned replicas supported at least twice the load of 1P1D. 256-token replicas passed every measured load up to 8 requests/s per GPU (1.000 at 8, longest gap 48.1~ms), while 1P1D passed 4 narrowly with our aiohttp proxy but not with the test proxy, and failed at 6 (0.765). For 26B FP8, 512- and 1,024-token replicas and 1P1D all passed the highest load we measured, 1 request/s per GPU. At every load where both passed, tuned replicas had a lower median TTFT (78--247~ms against 255--384~ms for 1P1D); at 4 requests/s per GPU for 26B, where 1P1D was borderline, 200--359 against 416--526~ms.
-
-\subsection{No SLO we could rank favors disaggregation against a tuned chunk}\label{sec:who}
-
-\begin{figure}[!htbp]
-\centering\includegraphics[width=\linewidth]{v1_who_wins.pdf}
-\caption{Which approach serves more SLO-meeting tokens per GPU as the SLO changes. Each cell is one SLO (vertical: TTFT limit; horizontal: longest-gap limit), judged at the highest rate where every repeat reaches 0.9 and with the best configuration of each kind; ratios are disaggregated $\div$ replica SLO goodput. Top row: replicas restricted to a 2,560-token chunk. Bottom row: replicas at any chunk we measured (512--2,560 for 26B, 256--2,560 for 31B). Hatched: at least one side still passed at its highest measured rate, so the ratio could not be placed in one category; to decide this, runs of one serving configuration with different proxies or sessions are pooled. The outlined cell is the strict SLO.}
-\label{fig:who}
-\end{figure}
-
-Because every per-request timing is stored, we re-judged all runs over a grid of TTFT limits (0.25--5~s) and longest-gap limits (30--300~ms) and compared the best configuration of each kind (Figure~\ref{fig:who}). Against 2,560-token replicas (top row), disaggregation wins at gap limits of 30--50~ms for both 26B variants and 40--75~ms for 31B chat whenever TTFT may exceed 0.25~s; at 75~ms and above most other cells cannot be decided within our measured rates. Against the best measured chunk (bottom row), no cell favors disaggregation:
-\begin{itemize}
-  \item For 26B NVFP4, replicas serve more in 55 of 64 cells, including 30~ms, where 512-token replicas passed 3 requests/s per GPU and 1P1D passed 2 (borderline). In eight cells (TTFT 3--5~s, gaps of 100~ms or more) both sides passed 5 and failed 6 requests/s per GPU (1P1D's prefill queue diverged at 6, median TTFT 14.6~s), so we count them as ties; one cell cannot be ranked.
-  \item For 26B FP8, replicas serve more when the TTFT limit is 0.5~s or less; elsewhere both sides passed the highest load we measured (1 request/s per GPU), so the map cannot rank them. At 30~ms, 512-token replicas reached 0.958 at that load.
-  \item For 31B chat, replicas serve more at 40--50~ms; at 30~ms neither side met the SLO, and at 75~ms and above most cells with a TTFT limit of 0.75~s or more cannot be ranked.
-  \item Replicas are the only option when TTFT must stay under 0.25~s, because disaggregation's TTFT includes an 80--300~ms transfer (Section~\ref{sec:ttft}).
-\end{itemize}
-Of the 192 cells in the bottom row, replicas served more or alone met the SLO in 99, neither side met it in 8, the sides tied in 8, and none favored disaggregation. The remaining 77 cells, 48 of them 26B FP8, which we measured only up to 1 request/s per GPU, could not be ranked. In 12 of the 26B cells where replicas served more, the goodput ratio was 0.796--0.797 (5 against 4 requests/s per GPU), just below the 0.8 edge of the equivalence band. With a mean-over-repeats rule, or with the equivalence band widened to one rate step (0.75--1.33), no cell favors disaggregation.
-
-The map picks the best configuration of each kind and cannot decide cells where a side still passed our highest rate. It covers 4K and chat inputs; at 16K and longer inputs, replicas with a small chunk would need many steps per prefill, and we did not measure that regime with a tuned chunk.
 
 \subsection{The KV transfer over TCP}\label{sec:transfer}
 
@@ -223,7 +175,156 @@ Disaggregation adds TTFT, and most of it is the KV transfer (Figure~\ref{fig:ttf
 \end{equation}
 with $V(L)$ from Eq.~\eqref{eq:vol}, $C_{\mathrm{flow}}$ the per-flow cap, and $m$ as defined above. We wrote estimates from this relation into our lab notebook before the three-node session: 235~ms for 26B at 0.5 requests/s per GPU (measured 267~ms, 14\% higher) and 810--830~ms for 31B at 0.125 (measured 853~ms); unlike the E9 predictions, these were not committed separately, so the repository does not record their order. The relation omits queueing: when we limited the sender's aggregate bandwidth to 1~Gbps (Appendix Figure~\ref{fig:bwsweep}), it predicted about 1.5~s against a measured median of 2.19~s; an M/D/1 waiting time (transfer 1.17~s, utilization 0.59) adds 0.83~s on average, giving about 2.3~s. Eq.~\eqref{eq:ttft} is a low-load estimate, and $m$ falls with load. It also shows why long inputs fail: for 26B FP8 at 16K inputs, about 520~MiB take roughly 0.3--0.7~s on top of a prefill of about 0.8~s, and we measured 1P1D's TTFT 465--506~ms above the replicas', beyond a 1~s budget.
 
-\subsection{Pitfalls: proxies that distort the measurement}\label{sec:proxy}
+\section{Head to head at measured input lengths}\label{sec:h2hsec}
+
+\subsection{Tuned chunks against disaggregation}\label{sec:h2h}
+
+\begin{figure}[!htbp]
+\centering\includegraphics[width=\linewidth]{v1_head_to_head.pdf}
+\caption{Strict-SLO attainment against load on two g7e nodes in a placement group. Blue: replicas at a 2,560-token chunk (light, dotted), 1,024 (dark, solid), or 512 for 26B and 256 for 31B (dark, dash-dot); runs that reached the proxy's connection cap are excluded, and the 1,024-token points at 4 requests/s per GPU and above come from E9. Orange and brown: 1P1D with vLLM's test proxy (light, dashed), our aiohttp proxy (dark, solid), or our aiohttp proxy with an 8,192-token prefill chunk (brown, long dashes; these runs set only the UCX segment sizes). Lines connect the mean of repeats; vertical bars span the minimum and maximum; series are shifted slightly along the x axis so that the bars do not overlap. Hollow markers: some repeat below 0.9, so the point fails the verdict rule. The test-proxy line in (a) joins 4 and 6 requests/s per GPU directly (5 was not measured). The dashed horizontal line is 0.9. The 2,048- and 1,536-token replicas are omitted for readability.}
+\label{fig:h2h}
+\end{figure}
+
+\begin{table}[!htbp]
+\centering\small
+\begin{tabularx}{\linewidth}{lLLL}
+\toprule
+Workload & Replicas, chunk 2,560 & Replicas, best chunk & 1P1D (aiohttp proxy) \\
+\midrule
+26B NVFP4, 4K & 1$^\dagger$, \$2.00, 132~ms & 5 (1,024), \$0.38, 259--278~ms & 3, \$0.63, 366~ms (failed 4 narrowly) \\
+26B FP8, 4K & none & $\ge$1 (512 or 1,024), $\le$\$1.87, 199--247~ms & $\ge$1, $\le$\$1.88, 384~ms \\
+31B NVFP4, chat & none & $\ge$8 (256), $\le$\$0.67, 117~ms & 4$^\dagger$, \$1.67, 303--308~ms \\
+\bottomrule
+\end{tabularx}
+\caption{Supported load under the strict SLO (requests/s per GPU; every repeat $\ge$0.9), cost per million SLO-meeting output tokens at that load (g7e, \$3.363 per GPU-hour, client excluded), and median TTFT at that load. ``$\ge$'' and ``$\le$'': the configuration still passed at the highest rate we measured; for 31B replicas that is one run at 8, and the run at 6 reached the proxy's connection cap and is caution data. $^\dagger$~Passed, but borderline (a repeat within 0.85--0.95). The 26B FP8 1P1D value uses vLLM's test proxy, the only one measured; with the test proxy, 31B 1P1D failed at 4 (0.885).}
+\label{tab:cost}
+\end{table}
+
+Against replicas at a tuned chunk, disaggregation did not serve more. For 26B with 4K inputs, 1,024-token replicas supported 5 requests/s per GPU and 1P1D 3. Without the proxy cap, the replicas passed 4 and 5 in every repeat and collapsed at 6 (0.19), with a small margin at 5 (longest gaps of 46.3 and 47.1~ms); 512-token replicas passed 1--4. 1P1D was borderline at 4 (0.885--0.992 with our aiohttp proxy, 0.77--0.98 with the test proxy) and collapsed at 5 (0.18) as prefills queued and gaps grew. Appendix Table~\ref{tab:ci} lists every repeat with its interval.
+
+A larger prefill chunk did not change these verdicts. Raising it to 8,192 tokens, in runs that also set only the UCX segment sizes, cut 1P1D's median TTFT at 4 requests/s per GPU from about 500 to 416--451~ms, but attainment stayed at 0.874 and 0.976 at 4 and 0.365 at 5. Its transfers were slower than with the seven-variable set at the same seeds (transfer-weighted means of 165--190 against 119--140~ms), so the gain came from the prefill side. At 5 the prefill node kept up, and KV transfers queued instead (transfer-weighted mean 0.92~s against 0.18~s with a 2,560-token prefill chunk) at an offered KV traffic of 11.7~Gbps. Because these runs changed two settings, we do not attribute the slowdown.
+
+The decode node's double load did not lengthen the gaps that decided the 26B verdicts; for 31B chat it slowed the decode steps. At equal GPU count, 1P1D's decode node carries the decodes of both GPUs. For 26B with 4K inputs, at 3 and 4 requests/s per GPU its mean time per output token (15.7 and 20.5--20.9~ms) matched that of 1,024-token replicas (16.7 and 20.7--20.9~ms), and its median longest gap was shorter (27.6 against 33.8~ms at 3), because no prefill entered its decode steps; it failed at 4 on the TTFT tail (p99 0.97--1.25~s against 0.39--0.46~s) and on rare decode-server pauses (Section~\ref{sec:proxy}). For 31B chat the fixed 1:1 split was unbalanced: short prompts kept the prefill GPU's streaming multiprocessors active only about 30\% of the time at 4 requests/s per GPU (41\% at 6) against 100\% on the decode node, and at 4 the decode node's mean time per output token was 32--33~ms against 30~ms for 256-token replicas.
+
+For 31B chat, tuned replicas supported at least twice the load of 1P1D. 256-token replicas passed every measured load up to 8 requests/s per GPU (1.000 at 8, longest gap 48.1~ms), while 1P1D passed 4 narrowly with our aiohttp proxy but not with the test proxy, and failed at 6 (0.765). For 26B FP8, 512- and 1,024-token replicas and 1P1D all passed the highest load we measured, 1 request/s per GPU. At every load where both passed, tuned replicas had a lower median TTFT (78--247~ms against 255--384~ms for 1P1D); at 4 requests/s per GPU for 26B, where 1P1D was borderline, 200--359 against 416--526~ms.
+
+\subsection{No SLO we could rank favors disaggregation against a tuned chunk}\label{sec:who}
+
+\begin{figure}[!htbp]
+\centering\includegraphics[width=\linewidth]{v1_who_wins.pdf}
+\caption{Which approach serves more SLO-meeting tokens per GPU as the SLO changes. Each cell is one SLO (vertical: TTFT limit; horizontal: longest-gap limit), judged at the highest rate where every repeat reaches 0.9 and with the best configuration of each kind; ratios are disaggregated $\div$ replica SLO goodput. Top row: replicas restricted to a 2,560-token chunk. Bottom row: replicas at any chunk we measured (512--2,560 for 26B, 256--2,560 for 31B). Hatched: at least one side still passed at its highest measured rate, so the ratio could not be placed in one category; to decide this, runs of one serving configuration with different proxies or sessions are pooled. The outlined cell is the strict SLO.}
+\label{fig:who}
+\end{figure}
+
+Because every per-request timing is stored, we re-judged all runs over a grid of TTFT limits (0.25--5~s) and longest-gap limits (30--300~ms) and compared the best configuration of each kind (Figure~\ref{fig:who}). The top row, against 2,560-token replicas, is discussed in Section~\ref{sec:fixedchunk}. Against the best measured chunk (bottom row), no cell favors disaggregation:
+\begin{itemize}
+  \item For 26B NVFP4, replicas serve more in 55 of 64 cells, including 30~ms, where 512-token replicas passed 3 requests/s per GPU and 1P1D passed 2 (borderline). In eight cells (TTFT 3--5~s, gaps of 100~ms or more) both sides passed 5 and failed 6 requests/s per GPU (1P1D's prefill queue diverged at 6, median TTFT 14.6~s), so we count them as ties; one cell cannot be ranked.
+  \item For 26B FP8, replicas serve more when the TTFT limit is 0.5~s or less; elsewhere both sides passed the highest load we measured (1 request/s per GPU), so the map cannot rank them. At 30~ms, 512-token replicas reached 0.958 at that load.
+  \item For 31B chat, replicas serve more at 40--50~ms; at 30~ms neither side met the SLO, and at 75~ms and above most cells with a TTFT limit of 0.75~s or more cannot be ranked.
+  \item Replicas are the only option when TTFT must stay under 0.25~s, because disaggregation's TTFT includes an 80--300~ms transfer (Section~\ref{sec:ttft}).
+\end{itemize}
+Of the 192 cells in the bottom row, replicas served more or alone met the SLO in 99, neither side met it in 8, the sides tied in 8, and none favored disaggregation. The remaining 77 cells, 48 of them 26B FP8, which we measured only up to 1 request/s per GPU, could not be ranked. In 12 of the 26B cells where replicas served more, the goodput ratio was 0.796--0.797 (5 against 4 requests/s per GPU), just below the 0.8 edge of the equivalence band. With a mean-over-repeats rule, or with the equivalence band widened to one rate step (0.75--1.33), no cell favors disaggregation.
+
+The map picks the best configuration of each kind and cannot decide cells where a side still passed our highest rate. It covers 4K and chat inputs; at 16K and longer inputs, replicas with a small chunk would need many steps per prefill, and we did not measure that regime with a tuned chunk.
+
+\subsection{When the chunk cannot shrink}\label{sec:fixedchunk}
+The comparison turns when the chunk is held at 2,560 tokens. In vLLM v0.30.0, Gemma~4 rejected chunks below 2,496 tokens whenever video input was enabled (Section~\ref{sec:config}), so a service that accepts video is in this position; we did not test whether image or audio input alone forces it. Measured against replicas at a 2,560-token chunk, disaggregation looked decisive (Figure~\ref{fig:h2h}, dotted lines). For 26B with 4K inputs, replicas passed 1 request/s per GPU narrowly (0.933--0.958 in five runs) and failed at 2 (0.37--0.64), while 1P1D passed 3; the cost per SLO-meeting token was \$2.00 against \$0.63 (Table~\ref{tab:cost}). For 26B FP8 and for 31B chat, 2,560-token replicas met the strict SLO at no measured load, while 1P1D did. In the top row of Figure~\ref{fig:who}, disaggregation wins at gap limits of 30--50~ms for both 26B variants and 40--75~ms for 31B chat whenever TTFT may exceed 0.25~s. We measured this case with images disabled only, not with multimodal traffic itself.
+
+Results from earlier sessions that used 2,560-token replicas (three nodes, input length, weight precision, a real trace, other GPUs, and output correctness) are in Appendix~\ref{app:other}.
+
+\section{Where chunked prefill runs out}\label{sec:boundary}
+Our tuned-chunk measurements stop at 4K inputs. To see what happens beyond, we fit a model of the scheduler step to the measured runs, check it against measurements it was not fitted to, and use it to map where each approach can meet both limits. The map is a prediction, not a measurement.
+
+\subsection{A step-time model}\label{sec:model}
+A replica processes a prompt of $L$ tokens in chunks of $c$ tokens. A step that carries a chunk starting at prompt position $p$, together with the ongoing decodes, takes
+\begin{equation}\label{eq:step}
+t(c, p) = d + e + a\,c + b\,c\,(p + c/2),
+\end{equation}
+where $d$ is the decode share of the step, $e$ the fixed cost of a step that carries prefill, $a$ the per-token cost, and $b$ the cost of attending to the prefix and within the chunk. The longest gap of a request decoding alongside is the longest such step, which for long prompts is the last full chunk. At low load, without queueing, the replica's TTFT is the sum of its steps plus a fixed overhead $o$:
+\begin{equation}\label{eq:ttftrep}
+\mathrm{TTFT}_{\mathrm{rep}}(L, c) \approx o + \sum_k t(c_k, p_k) = o + n\,(d + e) + a\,L + b\,L^2/2,
+\end{equation}
+with $n = \lceil L/c \rceil$ steps. The chunk enters the TTFT only through the step count, but it enters the longest gap directly, and the longest gap grows with $L$ because later chunks attend to a longer prefix. A chunk small enough for the gap limit at long $L$ therefore needs many steps, and each step pays $d + e$. For 1P1D we use Eq.~\eqref{eq:ttft} with the prefill node running 8,192-token chunks: the same $aL + bL^2/2$ plus the transfer $V(L)/(m \times C_{\mathrm{flow}})$ and a 28~ms residual.
+
+We fitted $e$, $a$, and $b$ by least squares to the longest gaps of 26B FP8 on g7e (the 90th percentile of the per-request longest gap, which at these rates is a step carrying a full chunk): chunks of 2,560, 1,024, and 512 tokens at 4K inputs, and 2,560 tokens at 16K inputs. We set $d$ to the measured median inter-token latency (7~ms) and $o$ from one TTFT (4K, 2,560 tokens). The fit gives $e = 9.0$~ms, $a = 15.1$~\textmu s per token, and $b = 2.65$~ns per token$^2$. We use 26B FP8 because it is the only model for which we measured 16K inputs on g7e; its BF16 KV cache is twice that of NVFP4 ($b_{\mathrm{g}} = 20$ and $b_{\mathrm{w}} = 200$~KiB per token in Eq.~\eqref{eq:vol}). Table~\ref{tab:model} compares the model with seven measurements it was not fitted to: replica TTFTs at three points within 8\%, and 1P1D TTFTs at three points, inside and outside a placement group, within 7\%.
+
+\begin{table}[!htbp]
+\centering\small
+\begin{tabularx}{\linewidth}{Llrrl}
+\toprule
+Point & Quantity & Measured & Model & Role \\
+\midrule
+26B FP8, g7e, 4K, chunk 2,560 & longest gap & 62.9 & 63.4 & fit \\
+ & TTFT & 157 & 157 & sets $o$ \\
+26B FP8, g7e, 4K, chunk 1,024 & longest gap & 43.6 & 41.2 & fit \\
+ & TTFT & 194 & 189 & check \\
+26B FP8, g7e, 4K, chunk 512 & longest gap & 27.2 & 29.0 & fit \\
+ & TTFT & 239 & 253 & check \\
+26B FP8, g7e, 16K, chunk 2,560 & longest gap & 150.2 & 150.3 & fit \\
+ & TTFT & 820 & 756 & check \\
+26B FP8, g7e, 4K, 1P1D, placement group & TTFT & 362 & 349 & check \\
+26B FP8, g7e, 4K, 1P1D, no placement group & TTFT & 482 & 500 & check \\
+26B FP8, g7e, 16K, 1P1D, no placement group & TTFT & 1,286 & 1,370 & check \\
+\midrule
+26B NVFP4, g7, 32K, chunk 2,560 & longest gap & 375.7 & 411.2 & extrapolation check \\
+ & TTFT & 3,507 & 3,495 & extrapolation check \\
+\bottomrule
+\end{tabularx}
+\caption{Step-time model against measurements, in ms (low load, 0.125--0.5 requests/s per GPU). For 1P1D the model uses Eq.~\eqref{eq:ttft} with $m = 1.5$ and the measured per-flow cap (9.54~Gbps in a placement group, 4.97~Gbps outside). The last two rows refit the model on 26B NVFP4 runs on the slower g7 GPU (session B) at 4K and 16K and predict 32K. Script: \texttt{harness/boundary\_model.py}.}
+\label{tab:model}
+\end{table}
+
+Beyond 16K we have only runs on the slower g7 GPU with 26B NVFP4 at a 2,560-token chunk (session B). Fitted the same way on its 4K and 16K gaps, the model predicted the 32K TTFT within 1\% but overestimated the 32K longest gap by 9\% (Table~\ref{tab:model}), probably because the sliding-window layers' attention stops growing while the model's $b$ term does not. Beyond 16K the model therefore overstates the replicas' step time, which favors disaggregation; Section~\ref{sec:moves} reports how far this moves the boundary.
+
+\subsection{The boundary}\label{sec:map}
+
+\begin{figure}[!htbp]
+\centering\includegraphics[width=\linewidth]{v4_boundary.pdf}
+\caption{Model prediction for 26B FP8 on g7e at low load: the lowest TTFT limit each side can meet together with the gap limit, by input length. Blue: replicas at the largest chunk whose longest step fits the gap limit. Orange: 1P1D over TCP in a placement group ($m = 1$) with the KV cache of this hybrid-attention checkpoint. Dashed: the same with a KV cache as large as if every layer were global. Dotted: a link 20$\times$ faster than our TCP transfer. Shaded orange: only 1P1D meets both limits. The model is calibrated at 4K and 16K (Table~\ref{tab:model}); beyond 16K it extrapolates.}
+\label{fig:boundary}
+\end{figure}
+
+Figure~\ref{fig:boundary} plots, for each input length, the lowest TTFT limit each side can meet together with the gap limit. Above the blue curve, replicas meet both limits with the largest chunk whose longest step fits the gap limit; above the orange curve, 1P1D over TCP does. Where the orange curve lies below the blue one, only disaggregation meets both.
+\begin{itemize}
+  \item At 4K the model agrees with our measurements: chunks of about 1,600 tokens meet a 50~ms gap limit with a TTFT of 0.17~s, and chunks of about 560 tokens meet 30~ms with 0.25~s, while 1P1D needs 0.42~s.
+  \item At a 50~ms gap limit, replicas meet any TTFT limit that 1P1D meets up to about 21K tokens. Beyond, the largest admissible chunk shrinks (336 tokens at 32K), the step count grows, and 1P1D over TCP meets TTFT limits that replicas cannot: at 32K the lowest TTFT is 3.5~s for replicas against 2.8~s for 1P1D, and at 64K 12.7 against 8.2~s.
+  \item At a 30~ms gap limit the window opens near 11K tokens (at 16K, 1.75 against 1.16~s), and beyond about 35K no chunk of 128 tokens or more meets the limit.
+\end{itemize}
+
+\subsection{What moves the boundary}\label{sec:moves}
+\begin{itemize}
+  \item \textbf{KV size.} With a KV cache as large as if every layer were global (220~KiB per token for this checkpoint, 6.9~GiB at 32K against 840~MiB), the transfer alone takes seconds, and 1P1D meets no TTFT limit that replicas miss up to 64K (Figure~\ref{fig:boundary}, dashed). Hybrid attention is what lets disaggregation over TCP take over at long inputs.
+  \item \textbf{Link speed.} With a transfer 20$\times$ faster, the window opens near 6K tokens at 50~ms and 4K at 30~ms (dotted): on RDMA-class links, disaggregation becomes an option at much shorter inputs.
+  \item \textbf{Gap limit.} A tighter limit forces smaller chunks and opens the window earlier (11K tokens at 30~ms against 21K at 50~ms).
+  \item \textbf{Model error and transfer rate.} Scaling $b$ by 0.85, which removes the 32K overestimate of Table~\ref{tab:model}, moves the 50~ms boundary to about 25K tokens; a low-load transfer rate ($m = 1.5$) moves it to about 19K. At a 50~ms gap limit the window therefore opens between roughly 19K and 25K tokens for this model and GPU.
+  \item \textbf{Load.} The map assumes low load. Under load each step also carries more decodes, so $d$ grows and the chunk's prefill share shrinks to $c$ minus the number of decodes, which raises the replica curve; on the other side transfers queue and $m$ falls (Section~\ref{sec:transfer}), which raises the 1P1D curve. We did not model either.
+  \item \textbf{Model and GPU.} A lighter model or a faster GPU (smaller $a$ and $b$) moves the window to longer inputs; at 4K, 26B NVFP4's 2,560-token step was 48~ms against 63~ms for FP8.
+\end{itemize}
+
+\section{Discussion}
+
+\subsection{Answers to the research questions}
+
+\paragraph{RQ1.} Both costs are of the expected kind; what we add is their size. The chunk sets the stall: for 26B with 4K inputs the median longest gap fell from 48 to 21~ms as the chunk shrank from 2,560 to 512 tokens, at a median TTFT cost of about 30~ms at 1,024 tokens and 70~ms at 512 (1 request/s per GPU); for dense 31B chat the chunk had to be 256 tokens. Disaggregation's added TTFT was 61--85\% KV transfer at low load. A 256~KB UCX segment made the transfer 3.4$\times$ faster, after which the per-flow cap and NIXL's splitting set its rate, and under load transfers queued.
+
+\paragraph{RQ2.} No. At 4K inputs and in chat, replicas with a 256--1,024-token chunk left no SLO that our measured rates could rank in which disaggregation over TCP served more, down to 30~ms gaps, and its median TTFT was always higher. Disaggregation won only against replicas held at 2,560 tokens, about 3$\times$ for 26B with 4K inputs, which is the position of Gemma~4 with video input enabled in vLLM v0.30.0.
+
+\paragraph{RQ3.} Input length, through the step count. A gap limit fixes the largest admissible chunk, which shrinks as the prefix grows, so long prompts need many steps, each with a fixed cost. Our model puts the turning point for 26B FP8 on g7e near 20K tokens at a 50~ms gap limit and near 11K at 30~ms. Whether disaggregation over TCP can take over there depends on the KV size: with hybrid attention it can; with a KV cache as large as if every layer were global, it cannot. These are model predictions calibrated on 4K and 16K runs, not measurements.
+
+\subsection{A procedure for small-GPU fleets over TCP}\label{sec:procedure-fleet}
+\begin{enumerate}
+  \item \textbf{Measure the replicas' longest gap per request, not system percentiles, at the load you plan to serve.} With long inputs it approaches the time of a step carrying one full chunk; with chat it follows the longest co-scheduled prompt. It grows with load: at a 1,024-token chunk the median longest gap grew from 28~ms at 1 request/s per GPU to 42--43~ms at 5.
+  \item \textbf{Use the largest chunk whose longest step fits the gap limit}, not the smallest the stack allows, and check that the stack allows it (Gemma~4 in vLLM v0.30.0 needs every modality disabled). In our 26B runs, 1,024 tokens added about 30~ms of median TTFT and passed 5 requests/s per GPU; 512 tokens added 70--80~ms at 1--2 and reached 359 against 200~ms at 4.
+  \item \textbf{Check the TTFT that chunk gives} with Eq.~\eqref{eq:ttftrep} or a measurement. If it meets the TTFT limit, stop: in our measurements, disaggregation over TCP did not serve more in that case.
+  \item \textbf{Reduce prefill work before moving it.} If requests share prefixes, prefix-aware routing removes prefill without moving any KV cache. If KV caches are reused across nodes, loading one is a transfer of $V(L)$ at $m \times C_{\mathrm{flow}}$, worth it when that is shorter than recomputing; for 26B NVFP4 at 4K the two are close (about 84~ms to move 140~MiB against a colocated TTFT of about 130~ms at low load), and longer prompts favor loading.
+  \item \textbf{Disaggregate over TCP only where no workable chunk meets both limits and the transfer fits}: estimate the TTFT with Eq.~\eqref{eq:ttft} using $V(L)$ from Eq.~\eqref{eq:vol}, the per-flow cap from one iperf flow, and $m$ measured at the target load (0.57--1.14 in our runs), and compare the offered KV traffic, request rate $\times\,V(L)$, with the rate transfers reach at that load (our 26B pair queued at 11.7~Gbps offered).
+  \item \textbf{Fix the serving path}: raise UCX's TCP segment size (send and receive together, without pinning socket buffers), keep nodes in a placement group, use proxies that neither cap connections nor pause for garbage collection, and choose the prefill-to-decode ratio for the traffic (at 1:1, 31B chat left the prefill GPU idle about 70\% of the time).
+\end{enumerate}
+
+\subsection{RDMA, EFA, and scope}
+EFA is available on the 8xlarge sizes of the same instance families, without GPUDirect RDMA on g6e and g7e~\cite{awsefa}, at roughly 1.6--2$\times$ the hourly price according to a third-party listing~\cite{vantage}. Those sizes also have four times the vCPUs, and NIXL would use EFA through libfabric rather than UCX over TCP, so the comparison would change more than the network. EFA would shrink the transfer term of Eq.~\eqref{eq:ttft}, but not the residual, the fixed split between the phases, or the replicas' chunk trade-off; in Figure~\ref{fig:boundary}, a link 20$\times$ faster opens the window at 4--6K tokens. We did not measure EFA. The per-flow cap is an AWS policy, and NIXL's splitting rule belongs to one version; on other clouds and versions, measure one flow and several flows with iperf first.
+
+\section{Pitfalls: proxies that distort the measurement}\label{sec:proxy}
 
 \begin{figure}[!htbp]
 \centering\includegraphics[width=0.9\linewidth]{v1_proxy_gc.pdf}
@@ -235,34 +336,12 @@ with $V(L)$ from Eq.~\eqref{eq:vol}, $C_{\mathrm{flow}}$ the per-flow cap, and $
 
 \paragraph{A connection limit in the replicas' proxy.} The replicas' round-robin proxy used an HTTP client whose default limit is 100 concurrent connections. At 4--6 requests/s per GPU in E8, every TTFT failure of 1,024-token replicas came from a request that arrived while 100 or more requests were in flight (33 of 33 at 4, 393 of 393 at 5), and no request failed on gaps at 5. With the limit removed in E9, the same configuration reached 1.000 at 4 and 0.999--1.000 at 5. The cap had lowered the replicas' supported load by one step and inflated their TTFT tail. It also shortened the gaps, because fewer requests decoded at once: at 5 requests/s per GPU the median inter-token latency was 17.3~ms with the cap and 30.3--31.8~ms without it. We therefore exclude capped runs even where they passed.
 
-Results from earlier sessions that used 2,560-token replicas (three nodes, input length, weight precision, a real trace, other GPUs, and output correctness) are in Appendix~\ref{app:other}.
-
-\section{Discussion}
-
-\subsection{Answers to the research questions}
-
-\paragraph{RQ1.} The chunk size. In our 4K workload a replica's longest gap was roughly the time of a step carrying a full chunk of another request's prefill; in chat traffic it followed the longest prompt prefilled alongside. For 26B, the median longest gap fell from 48 to 21~ms as the chunk shrank from 2,560 to 512 tokens, at a median TTFT cost of about 30~ms at 1,024 tokens and 70~ms at 512 (1 request/s per GPU), without losing supported load down to 1,024 tokens; 512 tokens passed up to 4, the highest rate we measured for it. For dense 31B chat the chunk had to be small (256 tokens), and it left median TTFT unchanged.
-
-\paragraph{RQ2.} The KV transfer, about 61--85\% of the added TTFT at low load. Its time is the KV volume of Eq.~\eqref{eq:vol} divided by the effective bandwidth, which the UCX segment size limits first and the per-flow cap and NIXL's splitting limit next (Eq.~\eqref{eq:ttft}). Under load, requests also queue for the prefill node, and when a larger prefill chunk let it keep up, they queued for the transfer instead. For 31B chat, the fixed 1:1 split left the prefill GPU mostly idle while the decode node ran slower steps.
-
-\paragraph{RQ3.} In our measurements, only when the chunk could not be reduced. Against replicas held at a 2,560-token chunk, near the minimum vLLM imposes on Gemma~4 with audio and video input enabled, disaggregation over TCP served about 3$\times$ more for 26B with 4K inputs at 50~ms, and for 26B FP8 and 31B chat it alone met the strict SLO. Against replicas at a 256--1,024-token chunk, no SLO that our measured rates could rank favored it, down to 30~ms, and its median TTFT was always higher. Disaggregation might still win where no workable chunk meets the gap limit, for example at gap limits below what the smallest workable chunk reaches or with very long inputs, which we did not measure.
-
-\subsection{A procedure before disaggregating over TCP}
-\begin{enumerate}
-  \item \textbf{Measure the replicas' longest gap per request, not system percentiles, at the load you plan to serve.} With long inputs it approaches the time of a step carrying one full chunk; with chat it follows the longest co-scheduled prompt. It grows with load: at a 1,024-token chunk the median longest gap grew from 28~ms at 1 request/s per GPU to 42--43~ms at 5.
-  \item \textbf{Use the largest chunk whose longest gap fits the limit}, not the smallest the stack allows, and check that the stack allows it (for Gemma~4 in vLLM v0.30.0, disable every modality). A smaller chunk spreads each prefill over more steps, which raises TTFT and can lower the prefill rate a replica sustains. In our 26B runs, 1,024 tokens added about 30~ms of median TTFT and passed 5 requests/s per GPU; 512 tokens added 70--80~ms at 1--2 and reached 359 against 200~ms at 4, and we did not test it above 4. For 31B chat, 256 tokens left median TTFT unchanged.
-  \item \textbf{Disaggregate only if no workable chunk fits}, and check that the transfer fits the TTFT budget with Eq.~\eqref{eq:ttft}: KV volume from Eq.~\eqref{eq:vol}, per-flow cap from one iperf flow, and $m$ measured at the target load (0.57--1.14 at the loads we tested). Also compare the offered KV traffic, request rate $\times\,V(L)$, with the rate transfers reach at that load; our 26B pair queued transfers at 11.7~Gbps offered.
-  \item \textbf{Fix the serving path}: raise UCX's TCP segment size (send and receive together, without pinning socket buffers; we compared the two settings only at low load), keep nodes in a placement group, and use proxies that neither cap connections nor pause for garbage collection.
-\end{enumerate}
-
-\subsection{RDMA, EFA, and scope}
-EFA is available on the 8xlarge sizes of the same instance families, without GPUDirect RDMA on g6e and g7e~\cite{awsefa}, at roughly 1.6--2$\times$ the hourly price according to a third-party listing~\cite{vantage}. Those sizes also have four times the vCPUs, and NIXL would use EFA through libfabric rather than UCX over TCP, so the comparison would change more than the network. EFA would shrink the transfer term of Eq.~\eqref{eq:ttft}, but not the residual, the fixed split between the phases, or the replicas' chunk trade-off. We did not measure EFA. The per-flow cap is an AWS policy, and NIXL's splitting rule belongs to one version; on other clouds and versions, measure one flow and several flows with iperf first.
-
 \section{Limitations}
 \begin{itemize}
   \item One model family (Gemma~4) with hybrid attention; models with only global attention have larger KV caches.
   \item One vLLM version (v0.30.0), one AWS availability zone, at most three nodes, and no RDMA or EFA baseline.
-  \item We measured chunks down to 512 tokens for 26B and 256 for 31B, and inputs up to 4K with tuned chunks; longer inputs and tighter gap limits with small chunks were not measured.
+  \item Section~\ref{sec:boundary} is a model, calibrated on one model and GPU (26B FP8 on g7e) at 4K and 16K inputs and checked against seven measurements it was not fitted to; beyond 16K it extrapolates, it assumes low load, and it omits queueing. We did not measure tuned chunks on inputs longer than 4K.
+  \item We measured chunks down to 512 tokens for 26B and 256 for 31B.
   \item Decisive points have one to five runs, and rates are resolved to 1 request/s per GPU; several verdicts are bounded by our highest measured rate.
   \item The disaggregated side kept most defaults (decode node limited to 256 sequences, NIXL's four threads; the prefill chunk was varied once).
   \item Sessions before E9 used a replica proxy capped at 100 connections; we excluded the 11 runs that reached the cap (two of them also client-limited), but results from earlier sessions still used 2,560-token replicas.
@@ -272,7 +351,7 @@ EFA is available on the 8xlarge sizes of the same instance families, without GPU
 \end{itemize}
 
 \section{Conclusion}
-Over TCP between rented single-GPU nodes, disaggregation works: once UCX's segment size is raised, its first-token cost is mostly a KV transfer that can be roughly estimated at low load. Its benefit is real: with no prefill in its decode steps, 1P1D's longest gaps were shorter than those of 1,024-token replicas. But chunked prefill bounds, rather than removes, the prefill work in each step, and with a well-chosen chunk that bound met every gap limit that disaggregation met, so isolation bought no extra load while the transfer and the prefill queue lengthened TTFT. Against replicas held at a 2,560-token chunk, disaggregation served about three times more for 26B with 4K inputs under a 50~ms gap limit; against replicas with a 256--1,024-token chunk, no SLO we could rank favored it, and its median TTFT was always higher. Choose the chunk first, and disaggregate over TCP when no workable chunk meets the gap limit.
+For a fleet of single-GPU instances linked by TCP, tune the chunk first. At the input lengths of most chat and short-document services, a chunk that keeps the longest gap within the limit costs tens of milliseconds of TTFT, and disaggregation over TCP served no more under any SLO we could rank; it is worth considering when the chunk cannot shrink, as with video input on Gemma~4 in vLLM v0.30.0. For long inputs, a gap limit forces a chunk so small that the step count dominates TTFT, and our calibrated model predicts that disaggregation over TCP then meets latency targets that chunked prefill cannot, from roughly 20K tokens at a 50~ms gap limit, provided the KV cache is small, as with hybrid attention. The transfer itself is mostly a matter of software defaults and cloud policy: raise UCX's segment size, keep nodes in a placement group, and plan on about one flow's rate. Measuring the long-input regime directly is the next step.
 
 \section*{Use of AI tools}
 An AI coding assistant (Claude) was used to write measurement and analysis scripts, operate the cloud infrastructure, run three rounds of mock peer review, the first two of which prompted sessions E8 and E9, draft figures, and draft and translate the text. All experiments ran on real hardware, and the author checked the reported numbers against the raw data.

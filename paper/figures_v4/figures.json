@@ -1,0 +1,2119 @@
+{
+ "v1_chunk_stall": {
+  "(a) 26B NVFP4, 4K input|2560": {
+   "runs": 5,
+   "maxgap_p10_p50_p90_ms": [
+    48.1,
+    48.4,
+    49.0
+   ],
+   "ttft_p50_ms": 132,
+   "attain_1s_50ms": [
+    0.944,
+    0.933,
+    0.958,
+    0.944,
+    0.95
+   ]
+  },
+  "(a) 26B NVFP4, 4K input|2048": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    52.1,
+    52.3,
+    52.6
+   ],
+   "ttft_p50_ms": 138,
+   "attain_1s_50ms": [
+    0.011
+   ]
+  },
+  "(a) 26B NVFP4, 4K input|1536": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    37.7,
+    38.8,
+    41.9
+   ],
+   "ttft_p50_ms": 145,
+   "attain_1s_50ms": [
+    1.0
+   ]
+  },
+  "(a) 26B NVFP4, 4K input|1024": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    26.8,
+    27.6,
+    31.7
+   ],
+   "ttft_p50_ms": 161,
+   "attain_1s_50ms": [
+    1.0
+   ]
+  },
+  "(a) 26B NVFP4, 4K input|512": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    21.0,
+    21.4,
+    23.4
+   ],
+   "ttft_p50_ms": 205,
+   "attain_1s_50ms": [
+    1.0
+   ]
+  },
+  "(b) 26B FP8, 4K input|2560": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    9.7,
+    62.2,
+    62.9
+   ],
+   "ttft_p50_ms": 157,
+   "attain_1s_50ms": [
+    0.133
+   ]
+  },
+  "(b) 26B FP8, 4K input|1024": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    9.4,
+    43.2,
+    43.6
+   ],
+   "ttft_p50_ms": 194,
+   "attain_1s_50ms": [
+    0.994
+   ]
+  },
+  "(b) 26B FP8, 4K input|512": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    10.6,
+    26.8,
+    27.2
+   ],
+   "ttft_p50_ms": 239,
+   "attain_1s_50ms": [
+    1.0
+   ]
+  },
+  "(c) 31B NVFP4, ShareGPT chat|2560": {
+   "runs": 5,
+   "maxgap_p10_p50_p90_ms": [
+    25.9,
+    51.5,
+    74.3
+   ],
+   "ttft_p50_ms": 79,
+   "attain_1s_50ms": [
+    0.458,
+    0.458,
+    0.514,
+    0.45,
+    0.458
+   ]
+  },
+  "(c) 31B NVFP4, ShareGPT chat|512": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    25.6,
+    51.5,
+    55.5
+   ],
+   "ttft_p50_ms": 79,
+   "attain_1s_50ms": [
+    0.442
+   ]
+  },
+  "(c) 31B NVFP4, ShareGPT chat|256": {
+   "runs": 2,
+   "maxgap_p10_p50_p90_ms": [
+    25.7,
+    34.1,
+    36.4
+   ],
+   "ttft_p50_ms": 79,
+   "attain_1s_50ms": [
+    1.0,
+    1.0
+   ]
+  }
+ },
+ "v1_head_to_head": {
+  "26b_4k": {
+   "Replicas chunk 2560": {
+    "0.5": [
+     1.0,
+     0.972
+    ],
+    "1": [
+     0.944,
+     0.933,
+     0.958,
+     0.944,
+     0.95
+    ],
+    "2": [
+     0.369,
+     0.644,
+     0.607,
+     0.478,
+     0.597
+    ]
+   },
+   "Replicas chunk 1024": {
+    "1": [
+     1.0
+    ],
+    "2": [
+     1.0,
+     1.0
+    ],
+    "3": [
+     1.0,
+     1.0
+    ],
+    "4": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "5": [
+     0.999,
+     1.0
+    ],
+    "6": [
+     0.189
+    ]
+   },
+   "Replicas chunk 512": {
+    "1": [
+     1.0
+    ],
+    "2": [
+     1.0,
+     1.0
+    ],
+    "3": [
+     1.0
+    ],
+    "4": [
+     0.985
+    ]
+   },
+   "1P1D test proxy": {
+    "0.25": [
+     1.0
+    ],
+    "0.5": [
+     1.0,
+     1.0
+    ],
+    "1": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "2": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "3": [
+     1.0,
+     0.956
+    ],
+    "4": [
+     0.836,
+     0.9,
+     0.975,
+     0.767
+    ],
+    "6": [
+     0.008
+    ]
+   },
+   "1P1D aiohttp proxy": {
+    "0.25": [
+     1.0
+    ],
+    "3": [
+     1.0
+    ],
+    "4": [
+     0.954,
+     0.992,
+     0.885
+    ],
+    "5": [
+     0.176
+    ]
+   },
+   "1P1D aiohttp, prefill chunk 8192 (UCX segment only)": {
+    "4": [
+     0.874,
+     0.976
+    ],
+    "5": [
+     0.366
+    ]
+   }
+  },
+  "26f_4k": {
+   "Replicas chunk 2560": {
+    "0.5": [
+     0.133
+    ],
+    "1": [
+     0.011
+    ]
+   },
+   "Replicas chunk 1024": {
+    "0.5": [
+     0.994
+    ],
+    "1": [
+     1.0
+    ]
+   },
+   "Replicas chunk 512": {
+    "0.5": [
+     1.0
+    ],
+    "1": [
+     1.0
+    ]
+   },
+   "1P1D test proxy": {
+    "0.5": [
+     1.0
+    ],
+    "1": [
+     1.0
+    ]
+   }
+  },
+  "31b_chat": {
+   "Replicas chunk 2560": {
+    "1": [
+     0.458,
+     0.458,
+     0.514,
+     0.45,
+     0.458
+    ],
+    "2": [
+     0.315
+    ],
+    "4": [
+     0.205
+    ]
+   },
+   "Replicas chunk 256": {
+    "1": [
+     1.0,
+     1.0
+    ],
+    "2": [
+     1.0
+    ],
+    "4": [
+     1.0
+    ],
+    "8": [
+     1.0
+    ]
+   },
+   "1P1D test proxy": {
+    "1": [
+     0.964
+    ],
+    "2": [
+     1.0
+    ],
+    "4": [
+     0.963,
+     0.933,
+     0.958,
+     0.885
+    ]
+   },
+   "1P1D aiohttp proxy": {
+    "4": [
+     0.924,
+     0.903,
+     1.0
+    ],
+    "6": [
+     0.765
+    ]
+   }
+  }
+ },
+ "v1_transfer": {
+  "iperf_flows_gbps": {
+   "1": 9.54,
+   "2": 19.06,
+   "4": 38.11,
+   "8": 49.72
+  },
+  "quoted_iperf": "RESULTS.md E4-0",
+  "transfer_gbps|UCX default": {
+   "n_windows": 20,
+   "median": 4.45,
+   "min": 2.48,
+   "max": 4.61
+  },
+  "transfer_gbps|Segment 256 KB only": {
+   "n_windows": 21,
+   "median": 14.97,
+   "min": 12.68,
+   "max": 16.14
+  },
+  "transfer_gbps|Seven UCX variables": {
+   "n_windows": 21,
+   "median": 14.16,
+   "min": 12.7,
+   "max": 14.86
+  },
+  "active_connections_share": {
+   "26B": {
+    "1": 0.09580838323353294,
+    "2": 0.5149700598802395,
+    "3": 0.38323353293413176,
+    "4": 0.005988023952095809
+   },
+   "31B": {
+    "1": 0.06269592476489028,
+    "2": 0.09090909090909091,
+    "3": 0.21003134796238246,
+    "4": 0.6363636363636364
+   },
+   "definition": "socket samples ~0.12 s apart; connections that moved >64 KiB; samples with any movement; shared fifth connection not counted"
+  }
+ },
+ "v1_ttft": {
+  "quoted": "RESULTS.md E4-1 (row 1, two days joined), E5 formula check (rows 2-3)",
+  "items": [
+   [
+    "26B FP8 · 4K · 0.25 req/s/GPU",
+    158,
+    165,
+    28,
+    null
+   ],
+   [
+    "26B NVFP4 · 4K · 0.5 req/s/GPU",
+    130,
+    84,
+    53,
+    235
+   ],
+   [
+    "31B NVFP4 · 4K · 0.125 req/s/GPU",
+    483,
+    283,
+    87,
+    820
+   ]
+  ]
+ },
+ "v1_who_wins": {
+  "Replicas at chunk 2560|26b_4k_tuned": [
+   [
+    "neither",
+    "neither",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ]
+  ],
+  "Replicas at chunk 2560|26f_4k_tuned": [
+   [
+    "neither",
+    "neither",
+    "neither",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ]
+  ],
+  "Replicas at chunk 2560|31b_chat_tuned": [
+   [
+    "neither",
+    "neither",
+    "neither",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ]
+  ],
+  "Replicas at the best\nmeasured chunk|26b_4k_tuned": [
+   [
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "r_better",
+    "unknown",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "similar",
+    "similar",
+    "similar",
+    "similar"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "similar",
+    "similar",
+    "similar",
+    "similar"
+   ]
+  ],
+  "Replicas at the best\nmeasured chunk|26f_4k_tuned": [
+   [
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ]
+  ],
+  "Replicas at the best\nmeasured chunk|31b_chat_tuned": [
+   [
+    "neither",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ]
+  ]
+ },
+ "v1_proxy_gc": {
+  "26_1P1D_toyi": {
+   "run": "2026-09-30T011252Z_E8_26_1P1D_toyi_N0_random_r8",
+   "events_ge15": [
+    [
+     90.1,
+     74
+    ],
+    [
+     106.0,
+     106
+    ],
+    [
+     161.8,
+     87
+    ]
+   ],
+   "gen2_gc": [
+    [
+     12.6,
+     36.0
+    ],
+    [
+     90.1,
+     37.4
+    ],
+    [
+     161.8,
+     37.5
+    ]
+   ]
+  },
+  "26_1P1D_aio": {
+   "run": "2026-09-30T013404Z_E8_26_1P1D_aio_N0_random_r8",
+   "events_ge15": [
+    [
+     106.5,
+     113
+    ]
+   ],
+   "gen2_gc": []
+  }
+ },
+ "v4_boundary": {
+  "G50": {
+   "first_pd_only": [
+    21247,
+    1.587
+   ]
+  },
+  "G30": {
+   "first_pd_only": [
+    10624,
+    0.794
+   ]
+  }
+ },
+ "fig01_request_vs_system": {
+  "n_runs": 215,
+  "filter": "safe runs with TTFT p99 < 1 s",
+  "replica_runs_p99_under_50_but_attain_below_0.9": 21,
+  "pd_runs_p99_under_50_but_attain_below_0.9": 7
+ },
+ "fig02_bandwidth_sweep": {
+  "points": [
+   {
+    "limit_gbps": "1",
+    "ttft_p50": 2185,
+    "attain": 0.0
+   },
+   {
+    "limit_gbps": "2",
+    "ttft_p50": 954,
+    "attain": 0.55
+   },
+   {
+    "limit_gbps": "3",
+    "ttft_p50": 744,
+    "attain": 0.92
+   },
+   {
+    "limit_gbps": "5",
+    "ttft_p50": 587,
+    "attain": 1.0
+   },
+   {
+    "limit_gbps": "no limit",
+    "ttft_p50": 471,
+    "attain": 1.0
+   }
+  ]
+ },
+ "fig05_input_length": {
+  "B2": [
+   [
+    4096,
+    0.23,
+    1.0
+   ],
+   [
+    16384,
+    0.0,
+    0.17
+   ],
+   [
+    32000,
+    0.0,
+    0.0
+   ]
+  ],
+  "P1": [
+   [
+    4096,
+    0.96,
+    1.0
+   ],
+   [
+    16384,
+    0.0,
+    0.47
+   ],
+   [
+    32000,
+    0.0,
+    0.0
+   ]
+  ]
+ },
+ "fig06_gpu_speed_4k": [
+  {
+   "group": "g7 · PRO 4500 26B NVFP4 (before tuning)",
+   "replicas": 0.022,
+   "pd": 0.839
+  },
+  {
+   "group": "g6e · L40S 26B FP8",
+   "replicas": 0.022,
+   "pd": 0.828
+  },
+  {
+   "group": "g7e · PRO 6000 26B FP8",
+   "replicas": 0.139,
+   "pd": 0.983
+  },
+  {
+   "group": "g7e · PRO 6000 26B NVFP4 + placement group",
+   "replicas": 0.972,
+   "pd": 1.0
+  }
+ ],
+ "fig07_gpu_kv": {
+  "l40s_26b_fp8_kvmatch": [
+   {
+    "rate": 1.0,
+    "per_gpu": 1.0,
+    "n": 1,
+    "attain": [
+     0.972
+    ]
+   },
+   {
+    "rate": 4.0,
+    "per_gpu": 4.0,
+    "n": 1,
+    "attain": [
+     0.372
+    ]
+   },
+   {
+    "rate": 8.0,
+    "per_gpu": 8.0,
+    "n": 1,
+    "attain": [
+     0.092
+    ]
+   },
+   {
+    "rate": 12.0,
+    "per_gpu": 12.0,
+    "n": 1,
+    "attain": [
+     0.019
+    ]
+   },
+   {
+    "rate": 16.0,
+    "per_gpu": 16.0,
+    "n": 1,
+    "attain": [
+     0.007
+    ]
+   }
+  ],
+  "pro6000_26b_fp8_kvmax": [
+   {
+    "rate": 1.0,
+    "per_gpu": 1.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 4.0,
+    "per_gpu": 4.0,
+    "n": 1,
+    "attain": [
+     0.999
+    ]
+   },
+   {
+    "rate": 8.0,
+    "per_gpu": 8.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 12.0,
+    "per_gpu": 12.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 16.0,
+    "per_gpu": 16.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 24.0,
+    "per_gpu": 24.0,
+    "n": 1,
+    "attain": [
+     0.42
+    ]
+   },
+   {
+    "rate": 32.0,
+    "per_gpu": 32.0,
+    "n": 1,
+    "attain": [
+     0.092
+    ]
+   }
+  ],
+  "pro6000_26b_fp8_kvmatch": [
+   {
+    "rate": 1.0,
+    "per_gpu": 1.0,
+    "n": 1,
+    "attain": [
+     0.983
+    ]
+   },
+   {
+    "rate": 4.0,
+    "per_gpu": 4.0,
+    "n": 1,
+    "attain": [
+     0.999
+    ]
+   },
+   {
+    "rate": 8.0,
+    "per_gpu": 8.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 12.0,
+    "per_gpu": 12.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   }
+  ],
+  "26F_single_kvmatch": [
+   {
+    "rate": 16.0,
+    "per_gpu": 16.0,
+    "n": 3,
+    "attain": [
+     0.958,
+     0.975,
+     0.975
+    ]
+   },
+   {
+    "rate": 20.0,
+    "per_gpu": 20.0,
+    "n": 1,
+    "attain": [
+     0.802
+    ]
+   },
+   {
+    "rate": 24.0,
+    "per_gpu": 24.0,
+    "n": 1,
+    "attain": [
+     0.26
+    ]
+   }
+  ]
+ },
+ "fig08_scaling_26b": {
+  "4k_26_B2": [
+   {
+    "rate": 1.0,
+    "per_gpu": 0.5,
+    "n": 2,
+    "attain": [
+     1.0,
+     0.972
+    ]
+   },
+   {
+    "rate": 2.0,
+    "per_gpu": 1.0,
+    "n": 4,
+    "attain": [
+     0.944,
+     0.933,
+     0.958,
+     0.944
+    ]
+   },
+   {
+    "rate": 4.0,
+    "per_gpu": 2.0,
+    "n": 4,
+    "attain": [
+     0.367,
+     0.644,
+     0.604,
+     0.478
+    ]
+   }
+  ],
+  "chat_26_B2": [
+   {
+    "rate": 16.0,
+    "per_gpu": 8.0,
+    "n": 4,
+    "attain": [
+     0.997,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   {
+    "rate": 32.0,
+    "per_gpu": 16.0,
+    "n": 1,
+    "attain": [
+     0.975
+    ]
+   }
+  ],
+  "4k_26_B3": [
+   {
+    "rate": 1.5,
+    "per_gpu": 0.5,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 3.0,
+    "per_gpu": 1.0,
+    "n": 4,
+    "attain": [
+     0.993,
+     0.974,
+     0.989,
+     1.0
+    ]
+   },
+   {
+    "rate": 6.0,
+    "per_gpu": 2.0,
+    "n": 1,
+    "attain": [
+     0.694
+    ]
+   }
+  ],
+  "chat_26_B3": [
+   {
+    "rate": 24.0,
+    "per_gpu": 8.0,
+    "n": 1,
+    "attain": [
+     0.999
+    ]
+   },
+   {
+    "rate": 48.0,
+    "per_gpu": 16.0,
+    "n": 1,
+    "attain": [
+     0.768
+    ]
+   }
+  ],
+  "4k_26_1P1D": [
+   {
+    "rate": 1.0,
+    "per_gpu": 0.5,
+    "n": 2,
+    "attain": [
+     1.0,
+     1.0
+    ]
+   },
+   {
+    "rate": 2.0,
+    "per_gpu": 1.0,
+    "n": 4,
+    "attain": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   {
+    "rate": 4.0,
+    "per_gpu": 2.0,
+    "n": 4,
+    "attain": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   {
+    "rate": 6.0,
+    "per_gpu": 3.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 8.0,
+    "per_gpu": 4.0,
+    "n": 1,
+    "attain": [
+     0.836
+    ]
+   },
+   {
+    "rate": 12.0,
+    "per_gpu": 6.0,
+    "n": 1,
+    "attain": [
+     0.008
+    ]
+   }
+  ],
+  "chat_26_1P1D": [
+   {
+    "rate": 16.0,
+    "per_gpu": 8.0,
+    "n": 4,
+    "attain": [
+     0.995,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   {
+    "rate": 32.0,
+    "per_gpu": 16.0,
+    "n": 1,
+    "attain": [
+     0.868
+    ]
+   }
+  ],
+  "4k_26_1P2D": [
+   {
+    "rate": 1.5,
+    "per_gpu": 0.5,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 3.0,
+    "per_gpu": 1.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 6.0,
+    "per_gpu": 2.0,
+    "n": 4,
+    "attain": [
+     1.0,
+     1.0,
+     0.999,
+     0.998
+    ]
+   },
+   {
+    "rate": 9.0,
+    "per_gpu": 3.0,
+    "n": 1,
+    "attain": [
+     0.906
+    ]
+   },
+   {
+    "rate": 12.0,
+    "per_gpu": 4.0,
+    "n": 1,
+    "attain": [
+     0.009
+    ]
+   },
+   {
+    "rate": 18.0,
+    "per_gpu": 6.0,
+    "n": 1,
+    "attain": [
+     0.003
+    ]
+   }
+  ],
+  "chat_26_1P2D": [
+   {
+    "rate": 24.0,
+    "per_gpu": 8.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 48.0,
+    "per_gpu": 16.0,
+    "n": 1,
+    "attain": [
+     0.772
+    ]
+   }
+  ],
+  "4k_26_2P1D": [
+   {
+    "rate": 1.5,
+    "per_gpu": 0.5,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 3.0,
+    "per_gpu": 1.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 6.0,
+    "per_gpu": 2.0,
+    "n": 4,
+    "attain": [
+     0.999,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   {
+    "rate": 9.0,
+    "per_gpu": 3.0,
+    "n": 1,
+    "attain": [
+     0.769
+    ]
+   },
+   {
+    "rate": 12.0,
+    "per_gpu": 4.0,
+    "n": 1,
+    "attain": [
+     0.026
+    ]
+   },
+   {
+    "rate": 18.0,
+    "per_gpu": 6.0,
+    "n": 1,
+    "attain": [
+     0.001
+    ]
+   }
+  ],
+  "chat_26_2P1D": [
+   {
+    "rate": 24.0,
+    "per_gpu": 8.0,
+    "n": 1,
+    "attain": [
+     0.928
+    ]
+   },
+   {
+    "rate": 48.0,
+    "per_gpu": 16.0,
+    "n": 1,
+    "attain": [
+     0.062
+    ]
+   }
+  ]
+ },
+ "fig09_scaling_31b": {
+  "chat_31_B2": [
+   {
+    "rate": 2.0,
+    "per_gpu": 1.0,
+    "n": 4,
+    "attain": [
+     0.458,
+     0.458,
+     0.514,
+     0.45
+    ]
+   },
+   {
+    "rate": 4.0,
+    "per_gpu": 2.0,
+    "n": 1,
+    "attain": [
+     0.315
+    ]
+   },
+   {
+    "rate": 8.0,
+    "per_gpu": 4.0,
+    "n": 1,
+    "attain": [
+     0.205
+    ]
+   }
+  ],
+  "chat_31_1P1D": [
+   {
+    "rate": 2.0,
+    "per_gpu": 1.0,
+    "n": 1,
+    "attain": [
+     0.964
+    ]
+   },
+   {
+    "rate": 4.0,
+    "per_gpu": 2.0,
+    "n": 1,
+    "attain": [
+     1.0
+    ]
+   },
+   {
+    "rate": 8.0,
+    "per_gpu": 4.0,
+    "n": 4,
+    "attain": [
+     0.963,
+     0.933,
+     0.958,
+     0.885
+    ]
+   }
+  ],
+  "4k_31_B2": [
+   {
+    "rate": 0.25,
+    "per_gpu": 0.125,
+    "n": 1,
+    "attain": [
+     0.19
+    ]
+   },
+   {
+    "rate": 0.5,
+    "per_gpu": 0.25,
+    "n": 1,
+    "attain": [
+     0.02
+    ]
+   },
+   {
+    "rate": 1.0,
+    "per_gpu": 0.5,
+    "n": 1,
+    "attain": [
+     0.011
+    ]
+   }
+  ],
+  "4k_31_B3": [
+   {
+    "rate": 0.75,
+    "per_gpu": 0.25,
+    "n": 1,
+    "attain": [
+     0.022
+    ]
+   },
+   {
+    "rate": 1.5,
+    "per_gpu": 0.5,
+    "n": 1,
+    "attain": [
+     0.011
+    ]
+   },
+   {
+    "rate": 2.5,
+    "per_gpu": 0.8333333333333334,
+    "n": 1,
+    "attain": [
+     0.007
+    ]
+   }
+  ],
+  "4k_31_1P1D": [
+   {
+    "rate": 0.25,
+    "per_gpu": 0.125,
+    "n": 4,
+    "attain": [
+     0.87,
+     0.85,
+     0.89,
+     0.91
+    ]
+   },
+   {
+    "rate": 0.5,
+    "per_gpu": 0.25,
+    "n": 1,
+    "attain": [
+     0.66
+    ]
+   },
+   {
+    "rate": 1.0,
+    "per_gpu": 0.5,
+    "n": 1,
+    "attain": [
+     0.45
+    ]
+   }
+  ],
+  "4k_31_1P2D": [
+   {
+    "rate": 0.75,
+    "per_gpu": 0.25,
+    "n": 1,
+    "attain": [
+     0.496
+    ]
+   },
+   {
+    "rate": 1.5,
+    "per_gpu": 0.5,
+    "n": 1,
+    "attain": [
+     0.215
+    ]
+   },
+   {
+    "rate": 2.5,
+    "per_gpu": 0.8333333333333334,
+    "n": 1,
+    "attain": [
+     0.002
+    ]
+   }
+  ],
+  "4k_31_2P1D": [
+   {
+    "rate": 0.75,
+    "per_gpu": 0.25,
+    "n": 4,
+    "attain": [
+     0.815,
+     0.793,
+     0.815,
+     0.97
+    ]
+   },
+   {
+    "rate": 1.5,
+    "per_gpu": 0.5,
+    "n": 1,
+    "attain": [
+     0.296
+    ]
+   },
+   {
+    "rate": 2.5,
+    "per_gpu": 0.8333333333333334,
+    "n": 1,
+    "attain": [
+     0.0
+    ]
+   }
+  ]
+ },
+ "fig10_quantization": [
+  {
+   "point": "4K input, 1 req/s",
+   "precision": "NVFP4",
+   "replicas": 0.972,
+   "pd": 1.0
+  },
+  {
+   "point": "4K input, 1 req/s",
+   "precision": "FP8",
+   "replicas": 0.133,
+   "pd": 1.0
+  },
+  {
+   "point": "4K input, 1 req/s",
+   "precision": "BF16",
+   "replicas": 0.028,
+   "pd": 1.0
+  },
+  {
+   "point": "4K input, 2 req/s",
+   "precision": "NVFP4",
+   "replicas": 0.945,
+   "pd": 1.0
+  },
+  {
+   "point": "4K input, 2 req/s",
+   "precision": "FP8",
+   "replicas": 0.011,
+   "pd": 1.0
+  },
+  {
+   "point": "4K input, 2 req/s",
+   "precision": "BF16",
+   "replicas": 0.006,
+   "pd": 0.981
+  },
+  {
+   "point": "ShareGPT, 16 req/s",
+   "precision": "NVFP4",
+   "replicas": 1.0,
+   "pd": 1.0
+  },
+  {
+   "point": "ShareGPT, 16 req/s",
+   "precision": "FP8",
+   "replicas": 1.0,
+   "pd": 0.985
+  },
+  {
+   "point": "ShareGPT, 16 req/s",
+   "precision": "BF16",
+   "replicas": 0.389,
+   "pd": 0.692
+  }
+ ],
+ "fig11_trace": [
+  {
+   "config": "26_B2",
+   "req_s": 3.96,
+   "ttft_p50": [
+    44,
+    44,
+    44
+   ],
+   "attain": [
+    0.99,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "config": "26_1P1D",
+   "req_s": 3.95,
+   "ttft_p50": [
+    164,
+    163,
+    162
+   ],
+   "attain": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "config": "26_B3",
+   "req_s": 5.88,
+   "ttft_p50": [
+    44,
+    44,
+    44
+   ],
+   "attain": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "config": "26_1P2D",
+   "req_s": 5.87,
+   "ttft_p50": [
+    163,
+    162,
+    160
+   ],
+   "attain": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "config": "26_2P1D",
+   "req_s": 5.83,
+   "ttft_p50": [
+    170,
+    169,
+    170
+   ],
+   "attain": [
+    1.0,
+    1.0,
+    0.998
+   ]
+  },
+  {
+   "config": "31_B2",
+   "req_s": 3.74,
+   "ttft_p50": [
+    165,
+    164,
+    165
+   ],
+   "attain": [
+    0.048,
+    0.048,
+    0.048
+   ]
+  },
+  {
+   "config": "31_1P1D",
+   "req_s": 3.68,
+   "ttft_p50": [
+    718,
+    709,
+    699
+   ],
+   "attain": [
+    0.275,
+    0.278,
+    0.287
+   ]
+  }
+ ],
+ "fig13_repeatability": [
+  {
+   "point": [
+    "31_B2",
+    "sharegpt",
+    "2"
+   ],
+   "e7": [
+    0.458,
+    0.514,
+    0.45
+   ],
+   "e5": 0.458
+  },
+  {
+   "point": [
+    "26_B2",
+    "random",
+    "4"
+   ],
+   "e7": [
+    0.644,
+    0.604,
+    0.478
+   ],
+   "e5": 0.367
+  },
+  {
+   "point": [
+    "31_2P1D",
+    "random",
+    "0.75"
+   ],
+   "e7": [
+    0.793,
+    0.815,
+    0.97
+   ],
+   "e5": 0.815
+  },
+  {
+   "point": [
+    "31_1P1D",
+    "random",
+    "0.25"
+   ],
+   "e7": [
+    0.85,
+    0.89,
+    0.91
+   ],
+   "e5": 0.87
+  },
+  {
+   "point": [
+    "31_1P1D",
+    "sharegpt",
+    "8"
+   ],
+   "e7": [
+    0.933,
+    0.958,
+    0.885
+   ],
+   "e5": 0.963
+  },
+  {
+   "point": [
+    "26_B2",
+    "random",
+    "2"
+   ],
+   "e7": [
+    0.933,
+    0.958,
+    0.944
+   ],
+   "e5": 0.944
+  },
+  {
+   "point": [
+    "26F_single_kvmatch",
+    "sharegpt",
+    "16"
+   ],
+   "e7": [
+    0.958,
+    0.975,
+    0.975
+   ],
+   "e5": null
+  },
+  {
+   "point": [
+    "26_B3",
+    "random",
+    "3"
+   ],
+   "e7": [
+    0.974,
+    0.989,
+    1.0
+   ],
+   "e5": 0.993
+  },
+  {
+   "point": [
+    "26_1P2D",
+    "random",
+    "6"
+   ],
+   "e7": [
+    1.0,
+    0.999,
+    0.998
+   ],
+   "e5": 1.0
+  },
+  {
+   "point": [
+    "26_2P1D",
+    "random",
+    "6"
+   ],
+   "e7": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "e5": 0.999
+  },
+  {
+   "point": [
+    "26_B2",
+    "sharegpt",
+    "16"
+   ],
+   "e7": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "e5": 0.997
+  },
+  {
+   "point": [
+    "26_1P1D",
+    "random",
+    "2"
+   ],
+   "e7": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "e5": 1.0
+  },
+  {
+   "point": [
+    "26_1P1D",
+    "random",
+    "4"
+   ],
+   "e7": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "e5": 1.0
+  },
+  {
+   "point": [
+    "26_1P1D",
+    "sharegpt",
+    "16"
+   ],
+   "e7": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "e5": 0.995
+  }
+ ],
+ "fig14_push_vs_pull": [
+  {
+   "config": "31_pull",
+   "rate": 0.25,
+   "ttft_p50": 852,
+   "attain": 0.86
+  },
+  {
+   "config": "31_pull",
+   "rate": 0.5,
+   "ttft_p50": 888,
+   "attain": 0.63
+  },
+  {
+   "config": "31_push",
+   "rate": 0.25,
+   "ttft_p50": 799,
+   "attain": 0.82
+  },
+  {
+   "config": "31_push",
+   "rate": 0.5,
+   "ttft_p50": 826,
+   "attain": 0.66
+  }
+ ]
+}
