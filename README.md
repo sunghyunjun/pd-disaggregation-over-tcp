@@ -40,6 +40,7 @@ configs/    vllm serve flag sets, per-round run scripts and runbooks
 infra/      Terraform for GPU nodes, client node, placement group (set ALLOWED_SSH_CIDR before infra/up.sh)
 results/    all_runs.csv (455 runs), safe_runs.csv (audit labels), per_request.json.gz (per-request timings)
             raw per-run folders are in the release assets and on Zenodo, one tar.gz per measurement round
+            (model output text is removed from ShareGPT and trace runs; lengths and timings are complete)
 paper/      en/ LaTeX source and PDF, ko/ Korean rendering, figures_v4/, reviews/ (four rounds of mock review)
 RESULTS.md  lab notebook (Korean), including the predictions committed before the last round
 PROTOCOL.md pre-registered protocol v1.7 (committed before the first run)
@@ -47,7 +48,7 @@ PROTOCOL.md pre-registered protocol v1.7 (committed before the first run)
 
 ## Reproduce the report's numbers and figures
 
-With the raw per-run folders unpacked into `results/<round>/` (release assets), or from the committed summaries alone for everything except `aggregate.py`:
+With the raw per-run folders unpacked into `results/<round>/` (release assets `results-<round>.tar.gz`, checksums in `SHA256SUMS.txt`), or from the committed summaries alone for everything except `aggregate.py`:
 
 ```
 python3 harness/aggregate.py results/ -o results/all_runs.csv                 # every run, report SLOs by default
