@@ -115,7 +115,7 @@ figcaption p{{margin:0;font-size:14px;color:var(--ink-2)}}</style>
 <header>
   <h1>PD 논문 그림</h1>
   <p class="sub">한국어 원고에 들어간 그림을 원고와 같은 번호와 캡션으로 모았습니다. 캡션은 원고(paper/ko/draft.md)에서 그대로 가져오므로 둘이 어긋나지 않습니다. 그림 안의 글자는 논문용이라 영어입니다. 같은 그림이 저장소에 PDF 벡터로 있습니다.</p>
-  <div class="meta"><span>생성 harness/build_figure_page.py</span><span>그림 스크립트 harness/make_figures.py, slo_sensitivity.py</span><a href="(artifact link removed)" target="_blank" rel="noopener">한국어 원고</a><a href="(artifact link removed)" target="_blank" rel="noopener">PD 검증 결론</a></div>
+  <div class="meta"><span>생성 harness/build_figure_page.py</span><span>그림 스크립트 harness/make_figures.py, slo_sensitivity.py</span>한국어 원고PD 검증 결론</div>
 </header>
 <section style="display:grid;gap:12px">
   <h2>그림 목록</h2>
