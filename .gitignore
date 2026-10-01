@@ -7,3 +7,6 @@ results/*/bench.log
 *.pyc
 __pycache__/
 .terraform/
+
+# raw per-run folders are distributed as release assets; keep extracted copies out of status
+results/[A-Z]*/
