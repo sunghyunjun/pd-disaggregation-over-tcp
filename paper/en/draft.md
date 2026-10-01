@@ -2,7 +2,7 @@
 
 *Measurements and a Calibrated Model on Single-GPU Cloud Instances*
 
-Sunghyun Jun · <span class="todo">contact email</span> · <span class="todo">draft v4, 2026-10-01</span>
+Sunghyun Jun · <span class="todo">contact email</span> · Technical Report · <span class="todo">Version 1.0, October 2026</span> · <span class="todo">DOI</span>
 
 ## Abstract
 
@@ -59,7 +59,7 @@ We used three single-GPU instance types in one availability zone of AWS us-east-
 | g6e.2xlarge | L40S | 48 GB | 2.242 | cross-GPU comparison |
 | g7e.2xlarge | RTX PRO 6000 | 96 GB | 3.363 | placement group, chunk sweeps, head-to-head, scaling, repeats |
 
-<p class="cap"><b>Table 1.</b> GPU instances (one GPU each, no EFA). Prices are on-demand in us-east-1; costs in this paper use the g7e price. We did not record the g7 price, and no cost in this paper depends on it.</p>
+<p class="cap"><b>Table 1.</b> GPU instances (one GPU each, no EFA). Prices are on-demand in us-east-1; costs in this report use the g7e price. We did not record the g7 price, and no cost in this report depends on it.</p>
 
 We used vLLM v0.30.0 (NIXL 1.4.1) with NIXL's pull-based connector, in which the decode node reads the KV cache from the prefill node. Unless stated otherwise, disaggregated runs used seven UCX environment variables that we tuned in early rounds (Appendix C), except the three runs with an 8,192-token prefill chunk, which set only the two segment sizes. Servers used a GPU memory utilization of 0.90 (except 0.42 in the KV-matched single-node runs and 0.70 in the host-staging runs), at most 256 concurrent sequences, and a 32,768-token context (16,384 for the 31B FP8 runs of the cross-GPU comparison). The disaggregated side kept its defaults: a 2,560-token chunk on both nodes (the three runs above used 8,192 on the prefill node), 256 sequences on the decode node, and NIXL's default four worker threads.
 

@@ -78,7 +78,7 @@ def inline(s, ctx):
     s = sub_cmd(s, "cite", lambda a: "[" + ", ".join(str(ctx["cite"](k.strip())) for k in a.split(",")) + "]")
     s = s.replace("\\protect", "")
     s = re.sub(r"\$([^$]+)\$", lambda m: math(m.group(1)), s)
-    reps = [("\\textless", "&lt;"), ("\\textgreater", "&gt;"), ("\\textmu ", "µ"), ("\\textmu", "µ"), ("\\%", "%"), ("\\$", "$"), ("\\&", "&amp;"),
+    reps = [("\\textperiodcentered{}", "·"), ("\\textperiodcentered", "·"), ("\\textless", "&lt;"), ("\\textgreater", "&gt;"), ("\\textmu ", "µ"), ("\\textmu", "µ"), ("\\%", "%"), ("\\$", "$"), ("\\&", "&amp;"),
             ("\\_", "_"), ("---", "—"), ("--", "–"), ("``", "“"), ("''", "”"), ("~", "\u00a0"), ("\\ ", " "),
             ("D\\'ej\\`aVu", "DéjàVu"), ("et al.\\", "et al.")]
     for a, b in reps:
