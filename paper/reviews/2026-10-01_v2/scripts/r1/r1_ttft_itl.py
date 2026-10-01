@@ -1,6 +1,6 @@
 # Median TTFT, median/mean ITL, mean TPOT, per-request longest gap p50/p90 by config and per-GPU rate (26B 4K and 31B chat), audited runs only
 import json, gzip, glob, os, csv, statistics as st
-os.chdir('<repo>')
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), *(['..']*3)))  # repo root
 safe={r['run_id']:r for r in csv.DictReader(open('results/safe_runs.csv'))}
 want={('E5','26_B2'),('E7','26_B2'),('E8','26_B2_c2560'),('E8','26_B2_c2048'),('E8','26_B2_c1536'),('E8','26_B2_c1024'),('E9','26_B2_c1024'),('E9','26_B2_c512'),
       ('E8','26_1P1D_aio'),('E8','26_1P1D_toyi'),('E9','26_1P1D_aio_p8192'),('E5','26_1P1D'),('E7','26_1P1D'),

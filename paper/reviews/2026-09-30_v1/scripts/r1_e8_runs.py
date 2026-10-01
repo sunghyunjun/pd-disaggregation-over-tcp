@@ -1,5 +1,5 @@
 import json, glob, os, statistics as st
-R="<repo>/results/E8"
+R="results/E8"
 def conc(starts, lat):
     ev=[]
     for s,l in zip(starts,lat):

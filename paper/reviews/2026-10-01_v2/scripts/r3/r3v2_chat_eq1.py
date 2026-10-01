@@ -4,7 +4,7 @@ Coefficients from HF config.json (FP8 KV): 26B sliding 25x8x256x2 B = 100 KiB, g
 31B sliding 50x16x256x2 = 400 KiB, global 10x4x512x2 = 40 KiB. Block rounding: 16-token sliding blocks, 32-token global blocks
 (inferred from 2,240 = 5*128 + 25*64 descriptors at 4K). Predicts mean volume, unmerged descriptor count, NIXL split share (>=1024 desc)."""
 import json, glob, math, statistics as st
-R = "<repo>/results/"
+R = "results/"
 cases = [("E7/*_E7_26_1P1D_N0_sharegpt_r16", 10, 100, 5, 25), ("E5/*_E5_26_1P1D_N0_sharegpt_r*", 10, 100, 5, 25),
          ("E7/*_E7_26F_1P1D_N0_sharegpt_r16", 20, 200, 5, 25),
          ("E8/*31_1P1D_aio_N0_sharegpt_r8", 40, 400, 10, 50), ("E9/*31_1P1D_aio_N0_sharegpt_r*", 40, 400, 10, 50)]

@@ -5,7 +5,7 @@
 3) socket busy-time rate and rwnd_limited share per connection (ss)
 """
 import json, glob, os, re, statistics as st
-R = "<repo>/results/E8"
+R = "results/E8"
 
 print("== 1) replica runs: TTFT failures vs in-flight (rr_proxy uses aiohttp default connector, limit=100)")
 for d in sorted(glob.glob(R + "/2026-*_B2_*")):

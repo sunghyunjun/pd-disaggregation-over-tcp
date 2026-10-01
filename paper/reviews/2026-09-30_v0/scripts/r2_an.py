@@ -1,5 +1,5 @@
 import json, glob, os, csv, random, statistics as st, sys
-os.chdir('<repo>')
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), *(['..']*3)))  # repo root
 rows={r['run_id']:r for r in csv.DictReader(open('results/safe_runs.csv'))}
 where={os.path.basename(os.path.dirname(p)):p for p in glob.glob('results/*/*/bench.json')}
 def runs(stage_set,cfg,wl,rate,inlen=None):

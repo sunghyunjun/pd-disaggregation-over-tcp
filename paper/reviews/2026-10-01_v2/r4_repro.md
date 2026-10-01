@@ -253,7 +253,7 @@
 | [권장] .gitignore | 미해결. `results/*/bench.log` 등이 두 단계 아래 파일에 적용되지 않는다. |
 | [권장] 세션 env, 테라폼 기본값 | 미해결. `results/.session_{A,Ap,C1,P}.env` 4개가 추적된다. `variables.tf`에 개인 `aws_profile`과 `0.0.0.0/0`이 있다. |
 | [권장] CITATION.cff, LICENSE | 미해결. 제목과 초록이 v0 이전(g5/g6, per dollar)이고, LICENSE는 writeup/·figures/ 경로를 가리킨다. |
-| [권장] 심사 폴더의 절대 경로 | 늘었다. 사용자 홈 절대 경로가 든 추적 파일은 **15개**다(v0 md 3, v0 스크립트 4, v1 md 1, v1 스크립트 7). 세션 스크래치 경로(`<scratch>`)가 든 행도 5개 있다. 논문이 "both mock reviews with their scripts"를 공개한다고 하므로 정리한다. |
+| [권장] 심사 폴더의 절대 경로 | 늘었다. 사용자 홈 절대 경로가 든 추적 파일은 **15개**다(v0 md 3, v0 스크립트 4, v1 md 1, v1 스크립트 7). 세션 스크래치 경로가 든 행도 5개 있다. 논문이 "both mock reviews with their scripts"를 공개한다고 하므로 정리한다. |
 | [권장] 결정성 | `make_figures_v2.xfer_stats`와 `ss_*`의 `glob`이 아직 정렬되지 않았다. 이번에는 SVG가 같았지만 파일시스템 순서에 기댄다. |
 | [참고] 원고 자리표시 | `\todo{contact email}`, `\todo{draft v2, 2026-10-01}`, `\todo{GitHub URL and Zenodo DOI}`가 남았다. 8xlarge 가격은 아직 Vantage 인용이다(paper/TODO.md). |
 | [참고] 옛 그림 폴더 | `paper/figures/`(v0, 1토큰 규칙 전)와 `paper/figures_v1/`(상한 런 포함 분류 전)이 남아 있다. 공개한다면 버전을 표시한다. |

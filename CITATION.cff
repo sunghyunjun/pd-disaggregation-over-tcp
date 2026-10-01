@@ -1,9 +1,25 @@
 cff-version: 1.2.0
-title: "PD Disaggregation Without RDMA: Break-even Measurements on AWS GPU Instances"
+message: "If you use this code or data, please cite the technical report (preferred-citation) or this repository."
+title: "pd-disaggregation-over-tcp: measurement harness, analysis, and raw data"
 type: software
+version: "1.0"
+date-released: "2026-10"
+doi: 10.5281/zenodo.23085749
+repository-code: https://github.com/sunghyunjun/pd-disaggregation-over-tcp
+license: Apache-2.0
 authors:
   - family-names: Jun
     given-names: Sunghyun
-license: Apache-2.0
-repository-code: https://github.com/sunghyunjun/pd-without-rdma
-abstract: "Does prefill/decode disaggregation pay off on readily available cloud GPUs (AWS g5/g6/g7) without RDMA? Break-even measurements against colocated serving at equal GPU count and per dollar."
+    orcid: https://orcid.org/0009-0001-2391-2315
+    email: sunghyunjun1224@gmail.com
+preferred-citation:
+  type: report
+  title: "Chunk First: When Prefill-Decode Disaggregation Pays Off over TCP. Measurements and a Calibrated Model on Single-GPU Cloud Instances"
+  authors:
+    - family-names: Jun
+      given-names: Sunghyun
+      orcid: https://orcid.org/0009-0001-2391-2315
+  year: 2026
+  month: 10
+  doi: 10.5281/zenodo.23085600
+  notes: "Technical report, version 1.0"

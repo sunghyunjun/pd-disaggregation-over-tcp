@@ -3,7 +3,7 @@
 max window; mean descriptors. Run: python3 r6_xfer.py"""
 import glob, re, os, statistics as st
 MIB = 1.048576
-for f in sorted(glob.glob("<repo>/results/E8/xfer_E8/*.log")):
+for f in sorted(glob.glob("results/E8/xfer_E8/*.log")):
     w = []
     for line in open(f, errors="replace"):
         m = re.search(r"Num successful transfers=(\d+), Avg xfer time \(ms\)=([0-9.]+).*Avg MB per transfer=([0-9.]+).*descriptors=([0-9.]+)", line)

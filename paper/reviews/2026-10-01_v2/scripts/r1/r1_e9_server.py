@@ -1,6 +1,6 @@
 # Per-run server-side view for E9: running/waiting/steps/tokens-per-step/ITL per node+port
 import json, glob, datetime, collections, sys
-R='<repo>/results/E9'
+R='results/E9'
 series=collections.defaultdict(list)  # (node,port,metric)->[(t,v)]
 for f in glob.glob(R+'/collect/*/*prom.tsv'):
     node=f.split('/')[-2].split('-')[-1]

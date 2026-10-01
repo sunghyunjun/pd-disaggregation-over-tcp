@@ -3,7 +3,7 @@
 (1-token judged on TTFT only) rules, seed, median TTFT, p99 TTFT, median per-request max gap, median ITL, and for
 replica runs the attainment among requests that arrived with <100 in flight. Run: python3 r6_keypoints.py"""
 import json, glob, os, re, bisect, statistics as st
-ROOT = "<repo>/results"
+ROOT = "results"
 pats = ["E8/*_26_B2_c1024_*_r8", "E8/*_26_B2_c1024_*_r10", "E8/*_26_B2_c1024_*_r6", "E8/*_26_B2_c1024_*_r4",
         "E8/*_26_1P1D_aio_*_r8", "E8/*_26_1P1D_toyi_*_r8", "E8/*_26_1P1D_aio_*_r6", "E8/*_26_1P1D_toyi_*_r6", "E7/*_26_1P1D_*random_r8", "E7/*_26_1P1D_*random_r6",
         "E8/*_26_1P1D_aio_*_r10", "E8/*_26_B2_c1024_*_r2",

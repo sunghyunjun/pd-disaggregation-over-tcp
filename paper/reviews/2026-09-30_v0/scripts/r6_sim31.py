@@ -1,7 +1,7 @@
 # Extrapolate 31B replica chat attainment below 1 req/s/GPU from the measured
 # mapping (max co-scheduled prompt on the same replica -> P(max gap <= 50 ms)).
 import json, glob, os, csv, random, bisect
-os.chdir('<repo>')
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), *(['..']*3)))  # repo root
 rows={r['run_id']:r for r in csv.DictReader(open('results/safe_runs.csv'))}
 where={os.path.basename(os.path.dirname(p)):p for p in glob.glob('results/*/*/bench.json')}
 rids=sorted(k for k,r in rows.items() if r['safety']!='제외' and r['config']=='31_B2' and r['workload']=='sharegpt' and r['rate']=='2')

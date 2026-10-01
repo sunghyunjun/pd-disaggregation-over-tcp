@@ -97,11 +97,11 @@ RDMA 없이 AWS 단일 GPU 인스턴스끼리 TCP(vLLM v0.30.0, NIXL/UCX)로 PD 
 - Dynamo disagg communication guide: https://docs.nvidia.com/dynamo/v1.3.0/kubernetes-deployment/operate/disagg-communication
 
 ## 검토 근거 파일 (읽기만 함)
-- <repo>/paper/en/main.tex
-- <repo>/paper/en/main.pdf
-- <repo>/results/safe_runs.csv
-- <repo>/RESULTS.md
-- <repo>/PROTOCOL.md
-- <repo>/harness/serve.sh
-- <repo>/harness/serve_pair.sh
-- <repo>/harness/rr_proxy.py
+- paper/en/main.tex
+- paper/en/main.pdf
+- results/safe_runs.csv
+- RESULTS.md
+- PROTOCOL.md
+- harness/serve.sh
+- harness/serve_pair.sh
+- harness/rr_proxy.py

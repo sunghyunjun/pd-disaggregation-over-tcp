@@ -1,8 +1,8 @@
 # Who-wins bottom row: per-config per-rate attainment (min/each run) at key SLO cells, run counts, censoring
 import sys, json, gzip
-sys.path.insert(0, '<repo>/harness')
+sys.path.insert(0, 'harness')
 import slo_sensitivity as S
-cache = json.load(gzip.open('<repo>/results/per_request.json.gz','rt'))
+cache = json.load(gzip.open('results/per_request.json.gz','rt'))
 res = S.sensitivity(cache)
 cells = [(1.0,30),(1.0,40),(1.0,50),(0.5,50),(0.75,40),(3.0,75),(3.0,250 if 250 in S.B_GRID else 300),(5.0,300)]
 for key in ('26b_4k_tuned','26f_4k_tuned','31b_chat_tuned'):

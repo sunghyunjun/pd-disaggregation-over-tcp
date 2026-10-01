@@ -16,8 +16,8 @@ variable "ssh_public_key_path" {
   default = "~/.ssh/id_ed25519.pub"
 }
 variable "allowed_ssh_cidr" {
-  type    = string
-  default = "0.0.0.0/0"
+  type        = string
+  description = "CIDR allowed to reach SSH and the serving ports, e.g. your own IP as 203.0.113.4/32. No default on purpose."
 }
 
 # GPU node profile. Bandwidth notes are nominal; the harness records iperf3 effective values.

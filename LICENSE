@@ -1,3 +1,7 @@
-Code: Apache License 2.0 (see https://www.apache.org/licenses/LICENSE-2.0)
-Text, figures and results (writeup/, docs/, results/, figures/): CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+Code (harness/, configs/, infra/, third_party/ wrappers): Apache License 2.0
+  https://www.apache.org/licenses/LICENSE-2.0
+Text, figures, and data (paper/, docs/, results/, RESULTS.md, PROTOCOL.md): Creative Commons Attribution 4.0
+  https://creativecommons.org/licenses/by/4.0/
+Files under third_party/ keep their original licenses (see the headers there).
+
 Copyright 2026 Sunghyun Jun

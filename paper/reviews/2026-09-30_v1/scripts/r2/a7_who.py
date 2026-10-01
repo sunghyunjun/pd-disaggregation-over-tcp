@@ -1,6 +1,6 @@
 import sys, os, json, gzip
-sys.path.insert(0,'<repo>/harness')
-os.chdir('<repo>')
+sys.path.insert(0,'harness')
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), *(['..']*3)))  # repo root
 import slo_sensitivity as ss
 cache=ss.load_cache('results/safe_runs.csv')
 def seedidx(r):  # not available in cache; use run id order within rate

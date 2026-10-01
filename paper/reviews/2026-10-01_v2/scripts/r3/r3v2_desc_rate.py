@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """R3 round-3: window-level relation between mean descriptor count and transfer rate, 26B 4K 1P1D at 3-4 req/s per GPU (E8, E9)."""
 import re, glob, statistics as st, math
-R = "<repo>/results/"
+R = "results/"
 pat = re.compile(r"Num successful transfers=(\d+), Avg xfer time \(ms\)=([\d.]+).*Avg MB per transfer=([\d.]+), Throughput \(MB/s\)=([\d.]+), Avg number of descriptors=([\d.]+)")
 rows = []
 for f in glob.glob(R + "E8/xfer_E8/26_1P1D_*_r[68]_*") + glob.glob(R + "E9/xfer_E9/26_*r8*"):

@@ -1,5 +1,5 @@
 import json, glob, os, csv, statistics as st
-os.chdir('<repo>')
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), *(['..']*3)))  # repo root
 rows={r['run_id']:r for r in csv.DictReader(open('results/safe_runs.csv'))}
 where={os.path.basename(os.path.dirname(p)):p for p in glob.glob('results/*/*/bench.json')}
 def pick(cfg,wl,rate,stages=('E5','E7')):

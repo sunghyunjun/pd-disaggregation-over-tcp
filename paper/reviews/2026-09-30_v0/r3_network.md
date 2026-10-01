@@ -121,10 +121,10 @@ AWS 단일 GPU 노드 사이에서 vLLM·NIXL·UCX TCP로 PD 분리를 측정한
 - UCX 소스: 원문을 확인하지 않았고, RESULTS.md의 인용에 의존했다.
 
 ## 검토한 저장소 자료
-- <repo>/paper/en/main.tex
-- <repo>/RESULTS.md (세션 P, B, D, E2~E5)
-- <repo>/harness/make_figures.py
-- <repo>/results/E2/run_E2b.log
-- <repo>/results/E4/collect/ip-172-31-90-227/xfer_full_E4.log
-- <repo>/results/E4/collect/*/collect_*_nic.txt
-- <repo>/configs/tc.md, configs/run_D2.sh
+- paper/en/main.tex
+- RESULTS.md (세션 P, B, D, E2~E5)
+- harness/make_figures.py
+- results/E2/run_E2b.log
+- results/E4/collect/ip-172-31-90-227/xfer_full_E4.log
+- results/E4/collect/*/collect_*_nic.txt
+- configs/tc.md, configs/run_D2.sh

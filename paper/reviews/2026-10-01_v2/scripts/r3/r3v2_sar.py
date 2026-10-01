@@ -2,7 +2,7 @@
 """R3 round-3: per-second prefill-node NIC tx (sar -n DEV, kB=1024, includes headers) during 1P1D runs.
 Aggregate wire rate the P node sent, to compare with the ~20 Gbps shared limit and offered load."""
 import statistics as st
-R = "<repo>/results/"
+R = "results/"
 def load(p):
     out = []
     for l in open(p):

@@ -1,6 +1,6 @@
 # Decode-server ITL histogram diff (>50 ms) and proxy upstream gap clusters for E9 1P1D runs
 import re, glob, json, collections
-R='<repo>/results/E9'
+R='results/E9'
 def hist(f):
     h={}
     for l in open(f):
