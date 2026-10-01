@@ -48,7 +48,7 @@ PROTOCOL.md pre-registered protocol v1.7 (committed before the first run)
 
 ## Reproduce the report's numbers and figures
 
-With the raw per-run folders unpacked into `results/<round>/` (release assets `results-<round>.tar.gz`, checksums in `SHA256SUMS.txt`), or from the committed summaries alone for everything except `aggregate.py`:
+`aggregate.py`, `safe_runs.py`, and `chunk31_buckets.py` read the raw per-run folders, so unpack the release assets (`results-<round>.tar.gz`, checksums in `SHA256SUMS.txt`) into `results/<round>/` first; the remaining steps run from the committed `safe_runs.csv` and `per_request.json.gz` alone:
 
 ```
 python3 harness/aggregate.py results/ -o results/all_runs.csv                 # every run, report SLOs by default
