@@ -460,7 +460,7 @@ E9의 예측(다섯 항목, 표 E1)은 2026년 9월 30일 13:29 UTC에 당시 �
 
 ## G. 데이터와 코드
 
-측정 하네스, 설정, 분석 스크립트, 네 차례의 모의 심사와 그 스크립트, 요청별 원자료를 공개한다. 이 보고서: doi:10.5281/zenodo.23085600. 코드와 데이터: <span class="todo">GitHub 주소</span>와 doi:10.5281/zenodo.23085749. <span class="todo">원래 비공개 저장소 번들의 SHA-256.</span> 원자료는 측정 회차마다 저장했다(<code>results/&lt;회차&gt;/</code>).
+측정 하네스, 설정, 분석 스크립트, 네 차례의 모의 심사와 그 스크립트, 요청별 원자료를 공개한다. 이 보고서: doi:10.5281/zenodo.23085600. 코드와 데이터: <https://github.com/sunghyunjun/pd-disaggregation-over-tcp>와 doi:10.5281/zenodo.23085749. <span class="todo">원래 비공개 저장소 번들의 SHA-256.</span> 원자료는 측정 회차마다 저장했다(<code>results/&lt;회차&gt;/</code>).
 
 | 회차(폴더) | 날짜(UTC) | 인스턴스 | 모델 | 주요 내용 |
 |---|---|---|---|---|
