@@ -2,7 +2,7 @@
 
 *Measurements and a Calibrated Model on Single-GPU Cloud Instances*
 
-Sunghyun Jun · <span class="todo">contact email</span> · Technical Report · <span class="todo">Version 1.0, October 2026</span> · <span class="todo">DOI</span>
+Sunghyun Jun · <span class="todo">contact email</span> · Technical Report · Version 1.0, October 2026 · \href{https://doi.org/10.5281/zenodo.23085600}{doi:10.5281/zenodo.23085600}
 
 ## Abstract
 
@@ -282,9 +282,9 @@ For a fleet of single-GPU instances linked by TCP, tune the chunk first. At the 
 
 An AI coding assistant (Claude) was used to write measurement and analysis scripts, operate the cloud infrastructure, run four rounds of mock peer review, the first two of which prompted the two follow-up rounds and the fourth of which reviewed the model of Section 6, draft figures, and draft and translate the text. All experiments ran on real hardware, and the author checked the reported numbers against the raw data.
 
-## Funding
+## Funding and cost
 
-This work was carried out at the author's own expense, about $270 of cloud usage.
+No external funding. The author paid for the cloud usage, about $270.
 
 ## References
 
@@ -401,7 +401,7 @@ Other settings did not help. Staging the KV cache through host memory slowed TTF
 
 ## D. Deviations from the pre-registered protocol
 
-<p class="cap">Protocol v1.7, committed to our local repository on 24 September 2026 before the first session; not externally timestamped.</p>
+<p class="cap">Protocol v1.7, committed on 24 September 2026 before the first measurement round (commit <code>0f5aa02</code> in the public repository); not externally timestamped.</p>
 
 - Gap limit: five times each model's decode step became a common 50 ms (Section 3.5). One-token outputs pass the gap criterion since session E8.
 - Chunk size: 2,048 was planned; Gemma 4 forced 2,560 until sessions E8 and E9 swept 256–2,048.
@@ -415,7 +415,7 @@ Other settings did not help. Staging the KV cache through host memory slowed TTF
 
 ## E. Session E9 predictions
 
-Session E9's predictions (five items, Table E1) were committed to our then-private repository at 13:29 UTC on 30 September 2026 (commit <code>8775497</code> in our private repository; <span class="todo">hash in the public repository</span>), together with the run scripts, which did not change afterwards; the session started 46 minutes later. The timestamps are recorded by git on our machine and are not externally anchored. Three predictions held as far as we tested them. In the fourth, both verdicts held (31B replicas passed 8 requests/s per GPU and 1P1D failed at 6), but the seed-10000 1P1D run at 4 reached 1.000 rather than the predicted 0.85–0.95. The fifth (1P1D with an 8,192-token prefill chunk passing 4) did not hold (0.874 and 0.976). The two misses went in opposite directions. The prediction that 512-token replicas would not exceed 1,024-token ones was not tested above 4 requests/s per GPU. Most predictions extrapolated the second mock review's analysis and carried little risk; their value lies less in the hit rate than in fixing the run list and the verdict rule in advance and reporting all 19 runs.
+Session E9's predictions (five items, Table E1) were committed to our then-private repository at 13:29 UTC on 30 September 2026 (commit <code>ce8c0e0</code> in the public repository, <code>8775497</code> in the private working repository from which it was derived), together with the run scripts, which did not change afterwards; the session started 46 minutes later. The timestamps are recorded by git on our machine and are not externally anchored. Three predictions held as far as we tested them. In the fourth, both verdicts held (31B replicas passed 8 requests/s per GPU and 1P1D failed at 6), but the seed-10000 1P1D run at 4 reached 1.000 rather than the predicted 0.85–0.95. The fifth (1P1D with an 8,192-token prefill chunk passing 4) did not hold (0.874 and 0.976). The two misses went in opposite directions. The prediction that 512-token replicas would not exceed 1,024-token ones was not tested above 4 requests/s per GPU. Most predictions extrapolated the second mock review's analysis and carried little risk; their value lies less in the hit rate than in fixing the run list and the verdict rule in advance and reporting all 19 runs.
 
 |  | Prediction | Measured | Outcome |
 |---|---|---|---|
@@ -456,7 +456,7 @@ Session E9's predictions (five items, Table E1) were committed to our then-priv
 
 ## G. Data and code
 
-We release the measurement harness, configurations, analysis scripts, the four rounds of mock review with their scripts, and per-request raw data <span class="todo">GitHub URL and Zenodo DOI</span>. <span class="todo">SHA-256 of the bundle of the original private repository.</span> Raw data are stored per session (<code>results/&lt; session&gt;/</code>).
+We release the measurement harness, configurations, analysis scripts, the four rounds of mock review with their scripts, and per-request raw data. This report: \href{https://doi.org/10.5281/zenodo.23085600}{doi:10.5281/zenodo.23085600}. Code and data: <https://github.com/sunghyunjun/pd-disaggregation-over-tcp> and \href{https://doi.org/10.5281/zenodo.23085749}{doi:10.5281/zenodo.23085749}. The public repository is derived from the private working repository with <code>git filter-repo</code>: the AWS account ID and local paths replaced, the raw per-run folders removed, and the author e-mail unified; its <code>commit-map.txt</code> maps old to new hashes, and commit order and timestamps are preserved. The author keeps a <code>git bundle</code> of the original repository through private commit <code>3f0c44d</code> (public <code>b8f0f5c</code>), the last commit before this paragraph; its SHA-256 is <code>6723d77d3582c98bcbe0930806cc79957bb176c36abef23acad89b1c34fa61d5</code>, and it is available to anyone who wants to check the derivation. Raw data are stored per session (<code>results/&lt; session&gt;/</code>).
 
 | Round (folder) | Date (UTC) | Instances | Models | Main content |
 |---|---|---|---|---|
