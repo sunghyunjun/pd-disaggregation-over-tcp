@@ -23,7 +23,7 @@
 \title{Chunk First: When Prefill--Decode Disaggregation Pays Off over TCP\\
 \large Measurements and a Calibrated Model on Single-GPU Cloud Instances}
 \author{Sunghyun Jun\\ \href{mailto:sunghyunjun1224@gmail.com}{sunghyunjun1224@gmail.com}}
-\date{Technical Report \textperiodcentered{} \todo{Version 1.0, October 2026} \textperiodcentered{} \todo{DOI}}
+\date{Technical Report \textperiodcentered{} Version 1.0, October 2026 \textperiodcentered{} \href{https://doi.org/10.5281/zenodo.23085600}{doi:10.5281/zenodo.23085600}}
 
 \begin{document}
 \maketitle
@@ -349,8 +349,8 @@ For a fleet of single-GPU instances linked by TCP, tune the chunk first. At the 
 \section*{Use of AI tools}
 An AI coding assistant (Claude) was used to write measurement and analysis scripts, operate the cloud infrastructure, run four rounds of mock peer review, the first two of which prompted the two follow-up rounds and the fourth of which reviewed the model of Section~\ref{sec:boundary}, draft figures, and draft and translate the text. All experiments ran on real hardware, and the author checked the reported numbers against the raw data.
 
-\section*{Funding}
-This work was carried out at the author's own expense, about \$270 of cloud usage.
+\section*{Funding and cost}
+No external funding. The author paid for the cloud usage, about \$270.
 
 \bibliographystyle{unsrtnat}
 \bibliography{refs}
@@ -536,7 +536,7 @@ Point (sessions) & per GPU & gap limit & runs & attainment (each run), 95\% inte
 \end{table}
 
 \section{Data and code}\label{app:data}
-We release the measurement harness, configurations, analysis scripts, the four rounds of mock review with their scripts, and per-request raw data \todo{GitHub URL and Zenodo DOI}. \todo{SHA-256 of the bundle of the original private repository.} Raw data are stored per session (\texttt{results/\textless session\textgreater/}).
+We release the measurement harness, configurations, analysis scripts, the four rounds of mock review with their scripts, and per-request raw data. This report: \href{https://doi.org/10.5281/zenodo.23085600}{doi:10.5281/zenodo.23085600}. Code and data: \todo{GitHub URL} and \todo{software DOI}. \todo{SHA-256 of the bundle of the original private repository.} Raw data are stored per session (\texttt{results/\textless session\textgreater/}).
 
 \begin{table}[H]
 \centering\footnotesize
