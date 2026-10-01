@@ -40,7 +40,7 @@ configs/    vllm serve flag sets, per-round run scripts and runbooks
 infra/      Terraform for GPU nodes, client node, placement group (set ALLOWED_SSH_CIDR before infra/up.sh)
 results/    all_runs.csv (455 runs), safe_runs.csv (audit labels), per_request.json.gz (per-request timings)
             raw per-run folders are in the release assets and on Zenodo, one tar.gz per measurement round
-            (model output text is removed from ShareGPT and trace runs; lengths and timings are complete)
+            (generated text is removed from every run in the public copies; output lengths and all timings are complete)
 paper/      en/ LaTeX source and PDF, ko/ Korean rendering, figures_v4/, reviews/ (four rounds of mock review)
 RESULTS.md  lab notebook (Korean), including the predictions committed before the last round
 PROTOCOL.md pre-registered protocol v1.7 (committed before the first run)
