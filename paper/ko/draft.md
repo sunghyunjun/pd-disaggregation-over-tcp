@@ -2,7 +2,7 @@
 
 *단일 GPU 클라우드 인스턴스에서의 측정과 보정 모델*
 
-전성현 · 독립 연구자 · <span class="todo">연락처 이메일</span> · <span class="todo">원고 v4, 2026-10-01</span>
+전성현 · <span class="todo">연락처 이메일</span> · <span class="todo">원고 v4, 2026-10-01</span>
 
 <div class="titlebox">
 이 문서는 영어 원고 v4(paper/en/main.tex)를 옮긴 한국어판이다. 그림 안의 글자는 영어 그대로 두었다. 수치와 표는 영어 원고와 같고, 인용 번호도 영어 원고의 참고문헌 번호를 따른다.

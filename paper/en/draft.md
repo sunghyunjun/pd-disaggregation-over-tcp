@@ -2,7 +2,7 @@
 
 *Measurements and a Calibrated Model on Single-GPU Cloud Instances*
 
-Sunghyun Jun · Independent Researcher · <span class="todo">contact email</span> · <span class="todo">draft v4, 2026-10-01</span>
+Sunghyun Jun · <span class="todo">contact email</span> · <span class="todo">draft v4, 2026-10-01</span>
 
 ## Abstract
 
@@ -293,7 +293,7 @@ This work was carried out at the author's own expense, about $270 of cloud usage
 - [1] Amey Agrawal, Ashish Panwar, Jayashree Mohan, Nipun Kwatra, Bhargav S. Gulavani, Ramachandran Ramjee. SARATHI: Efficient LLM Inference by Piggybacking Decodes with Chunked Prefills. arXiv preprint arXiv:2308.16369. 2023.
 - [2] Amey Agrawal et al. Taming Throughput-Latency Tradeoff in LLM Inference with Sarathi-Serve. 18th USENIX Symposium on Operating Systems Design and Implementation (OSDI 24). 2024.
 - [3] Yinmin Zhong, Shengyu Liu, Junda Chen, Jianbo Hu, Yibo Zhu, Xuanzhe Liu, Xin Jin, Hao Zhang. DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving. 18th USENIX Symposium on Operating Systems Design and Implementation (OSDI 24). 2024.
-- [4] Pratyush Patel, Esha Choukse, Chaojie Zhang, Aashaka Shah, I\~nigo Goiri, Saeed Maleki, Ricardo Bianchini. Splitwise: Efficient Generative LLM Inference Using Phase Splitting. ACM/IEEE 51st Annual International Symposium on Computer Architecture (ISCA). 2024. <https://doi.org/10.1109/ISCA59077.2024.00019>
+- [4] Pratyush Patel, Esha Choukse, Chaojie Zhang, Aashaka Shah, Iñigo Goiri, Saeed Maleki, Ricardo Bianchini. Splitwise: Efficient Generative LLM Inference Using Phase Splitting. ACM/IEEE 51st Annual International Symposium on Computer Architecture (ISCA). 2024. <https://doi.org/10.1109/ISCA59077.2024.00019>
 - [5] Ruoyu Qin, Zheming Li, Weiran He et al. Mooncake: Trading More Storage for Less Computation — A KVCache-centric Architecture for Serving LLM Chatbot. 23rd USENIX Conference on File and Storage Technologies (FAST 25). 2025.
 - [6] Amazon Web Services. Specifications for Amazon EC2 accelerated computing instances. 2026. <https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html>
 - [7] Amazon Web Services. Elastic Fabric Adapter for AI/ML and HPC workloads on Amazon EC2 (Amazon EC2 User Guide). 2026. <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html>

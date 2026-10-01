@@ -170,7 +170,7 @@ def main():
     ctx = {"labels": labels, "cite": cite}
 
     out = [f"# {inline(t1.strip(), ctx)}", "", f"*{inline(t2, ctx)}*", "",
-           "Sunghyun Jun · Independent Researcher · " + '<span class="todo">contact email</span>' + " · " +
+           "Sunghyun Jun · " + '<span class="todo">contact email</span>' + " · " +
            inline(re.search(r"\\date\{(.*)\}", src).group(1), ctx), ""]
     body = body.replace("\\maketitle", "")
     body = re.sub(r"\\(setcounter|renewcommand|counterwithin)\{[^{}]*\}(\{[^{}]*(\{[^{}]*\})?[^{}]*\})?", "", body)
