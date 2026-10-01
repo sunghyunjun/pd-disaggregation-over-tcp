@@ -48,7 +48,7 @@ PROTOCOL.md pre-registered protocol v1.7 (committed before the first run)
 
 ## Reproduce the report's numbers and figures
 
-`aggregate.py`, `safe_runs.py`, and `chunk31_buckets.py` read the raw per-run folders, so unpack the release assets (`results-<round>.tar.gz`, checksums in `SHA256SUMS.txt`) into `results/<round>/` first; the remaining steps run from the committed `safe_runs.csv` and `per_request.json.gz` alone:
+`aggregate.py`, `safe_runs.py`, `chunk31_buckets.py`, and `make_figures_v4.py` (transfer logs and socket samples under `results/E8/` and `results/E9/`) read the raw per-run folders, so unpack the release assets (`results-<round>.tar.gz`, checksums in `SHA256SUMS.txt`) into `results/<round>/` first; `boundary_model.py` and `decisive_ci.py` run from the committed `safe_runs.csv` and `per_request.json.gz` alone:
 
 ```
 python3 harness/aggregate.py results/ -o results/all_runs.csv                 # every run, report SLOs by default
