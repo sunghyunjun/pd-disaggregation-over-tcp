@@ -12,7 +12,7 @@ Prefill–decode disaggregation usually relies on RDMA or NVLink, which cheap si
 
 Serving a request to a large language model takes two phases: *prefill*, which processes the whole input at once, and *decode*, which produces output tokens one at a time. When both share a GPU, a prefill scheduled into the same step as ongoing decodes lengthens that step, and every streaming request on that GPU pauses. Two remedies exist. *Chunked prefill* splits a long prefill into pieces that are batched with decodes, which bounds the work any one step carries [1, 2]. *Prefill–decode (PD) disaggregation* runs the two phases on different GPUs and ships the KV cache from the prefill GPU to the decode GPU [3, 4, 5].
 
-Disaggregation pays for its isolation with a KV-cache transfer, and published systems run that transfer over fast links: InfiniBand [4], RDMA [5], or NVLink inside one node [3]. The cheapest single-GPU cloud instances offer none of these. On AWS, the 2xlarge sizes of the g6e, g7, and g7e families have one GPU, no Elastic Fabric Adapter (EFA), and no ENA Express [6]; the 8xlarge sizes of the same families add EFA at roughly 1.6–2× the hourly price [7, 8]. Public documentation discourages disaggregation over TCP: llm-d calls it “extremely slow” and “targeted for local development” [9], and NVIDIA Dynamo warns of a 200–500× slower TTFT without RDMA and recommends aggregated serving instead [10]. Few public measurements show how slow the TCP path is, or whether disaggregation over it still beats a well-configured colocated deployment.
+Disaggregation pays for its isolation with a KV-cache transfer, and published systems run that transfer over fast links: InfiniBand [4], RDMA [5], or NVLink inside one node [3]. The cheapest single-GPU cloud instances offer none of these. On AWS, the 2xlarge sizes of the g6e, g7, and g7e families have one GPU, no Elastic Fabric Adapter (EFA), and no ENA Express [6]; the 8xlarge sizes of the same families add EFA at 1.6–2× the hourly price [7, 8]. Public documentation discourages disaggregation over TCP: llm-d calls it “extremely slow” and “targeted for local development” [9], and NVIDIA Dynamo warns of a 200–500× slower TTFT without RDMA and recommends aggregated serving instead [10]. Few public measurements show how slow the TCP path is, or whether disaggregation over it still beats a well-configured colocated deployment.
 
 Our question comes from scaling out on such instances. A fleet of single-GPU nodes linked by TCP has several levers against prefill interference and repeated prefill work: chunked prefill, disaggregation, prefix-cache-aware routing as in llm-d [11], and KV-cache offloading as in LMCache [12]. Chunked prefill and disaggregation attack the same problem, the decode stalls that other requests' prefills cause, and only disaggregation pays for its fix with a network transfer. We therefore ask whether disaggregation over TCP is worth considering at all once the chunk size is tuned, and if so, where.
 
@@ -55,11 +55,11 @@ We used three single-GPU instance types in one availability zone of AWS us-east-
 
 | Instance | GPU | GPU memory | $/hour | Used for |
 |---|---|---|---|---|
-| g7.2xlarge | RTX PRO 4500 | 32 GB | – | input-length comparison, first transfer tuning, bandwidth limit, cross-GPU comparison |
+| g7.2xlarge | RTX PRO 4500 | 32 GB | 2.520 | input-length comparison, first transfer tuning, bandwidth limit, cross-GPU comparison |
 | g6e.2xlarge | L40S | 48 GB | 2.242 | cross-GPU comparison |
 | g7e.2xlarge | RTX PRO 6000 | 96 GB | 3.363 | placement group, chunk sweeps, head-to-head, scaling, repeats |
 
-<p class="cap"><b>Table 1.</b> GPU instances (one GPU each, no EFA). Prices are on-demand in us-east-1; costs in this report use the g7e price. We did not record the g7 price, and no cost in this report depends on it.</p>
+<p class="cap"><b>Table 1.</b> GPU instances (one GPU each, no EFA). Prices are on-demand Linux in us-east-1 from the AWS price list [8]; costs in this report use the g7e price.</p>
 
 We used vLLM v0.30.0 (NIXL 1.4.1) with NIXL's pull-based connector, in which the decode node reads the KV cache from the prefill node. Unless stated otherwise, disaggregated runs used seven UCX environment variables that we tuned in early rounds (Appendix C), except the three runs with an 8,192-token prefill chunk, which set only the two segment sizes. Servers used a GPU memory utilization of 0.90 (except 0.42 in the KV-matched single-node runs and 0.70 in the host-staging runs), at most 256 concurrent sequences, and a 32,768-token context (16,384 for the 31B FP8 runs of the cross-GPU comparison). The disaggregated side kept its defaults: a 2,560-token chunk on both nodes (the three runs above used 8,192 on the prefill node), 256 sequences on the decode node, and NIXL's default four worker threads.
 
@@ -259,7 +259,7 @@ Figure 7 plots, for each input length, the lowest TTFT limit each side can meet
 
 ### 7.2 RDMA, EFA, and scope
 
-EFA is available on the 8xlarge sizes of the same instance families, without GPUDirect RDMA on g6e and g7e [7], at roughly 1.6–2× the hourly price according to a third-party listing [8]. Those sizes also have four times the vCPUs, and NIXL would use EFA through libfabric rather than UCX over TCP, so the comparison would change more than the network. EFA would shrink the transfer term of Eq. (2), but not the residual, the fixed split between the phases, or the replicas' chunk trade-off; in our model, a transfer ten times faster than one TCP flow moves the crossover to about 3–5.5K tokens. We did not measure EFA. The per-flow cap is an AWS policy, and NIXL's splitting rule belongs to one version; on other clouds and versions, measure one flow and several flows with iperf first.
+EFA is available on the 8xlarge sizes of the same instance families (25 Gbps on g6e, 100 Gbps on g7 and g7e), with GPUDirect RDMA on g7.8xlarge but not on g6e.8xlarge or g7e.8xlarge [7, 6], at 1.6–2× the hourly price (g7e $5.27 against $3.36, g7 $4.09 against $2.52, g6e $4.53 against $2.24) [8]. Those sizes also have four times the vCPUs, and NIXL would use EFA through libfabric rather than UCX over TCP, so the comparison would change more than the network. EFA would shrink the transfer term of Eq. (2), but not the residual, the fixed split between the phases, or the replicas' chunk trade-off; in our model, a transfer ten times faster than one TCP flow moves the crossover to about 3–5.5K tokens. We did not measure EFA. The per-flow cap is an AWS policy, and NIXL's splitting rule belongs to one version; on other clouds and versions, measure one flow and several flows with iperf first.
 
 ## 8. Limitations
 
@@ -297,7 +297,7 @@ This work was carried out at the author's own expense, about $270 of cloud usage
 - [5] Ruoyu Qin, Zheming Li, Weiran He et al. Mooncake: Trading More Storage for Less Computation — A KVCache-centric Architecture for Serving LLM Chatbot. 23rd USENIX Conference on File and Storage Technologies (FAST 25). 2025.
 - [6] Amazon Web Services. Specifications for Amazon EC2 accelerated computing instances. 2026. <https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html>
 - [7] Amazon Web Services. Elastic Fabric Adapter for AI/ML and HPC workloads on Amazon EC2 (Amazon EC2 User Guide). 2026. <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html>
-- [8] Vantage. EC2 instance price listing: g7e.8xlarge and g6e.8xlarge (us-east-1, on demand). 2026. <https://instances.vantage.sh/>
+- [8] Amazon Web Services. AWS Price List bulk file for Amazon EC2, us-east-1 (on-demand Linux, shared tenancy). 2026. <https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv>
 - [9] llm-d project. Disaggregated Serving (documentation, v0.9). 2026. <https://llm-d.ai/docs/architecture/advanced/disaggregation>
 - [10] NVIDIA. Disaggregated Inference Communication Guide (Dynamo v1.3.0 documentation). 2026. <https://docs.nvidia.com/dynamo/v1.3.0/kubernetes-deployment/operate/disagg-communication>
 - [11] llm-d project. llm-d Architecture: Prefix-Cache Aware Routing. 2026. <https://llm-d.ai/docs/architecture>

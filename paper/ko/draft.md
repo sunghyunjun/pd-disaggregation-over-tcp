@@ -2,7 +2,7 @@
 
 *단일 GPU 클라우드 인스턴스에서의 측정과 보정 모델*
 
-전성현 · <span class="todo">연락처 이메일</span> · 테크니컬 리포트 · <span class="todo">버전 1.0, 2026년 10월</span> · <span class="todo">DOI</span>
+전성현 · sunghyunjun1224@gmail.com · 테크니컬 리포트 · <span class="todo">버전 1.0, 2026년 10월</span> · <span class="todo">DOI</span>
 
 <div class="titlebox">
 이 문서는 영어 원고 v4(paper/en/main.tex)를 옮긴 한국어판이다. 그림 안의 글자는 영어 그대로 두었다. 수치와 표는 영어 원고와 같고, 인용 번호도 영어 원고의 참고문헌 번호를 따른다.
@@ -16,7 +16,7 @@
 
 대규모 언어 모델이 요청 하나를 처리하는 과정은 두 단계다. 입력 전체를 한 번에 처리하는 *프리필*과 출력 토큰을 하나씩 만드는 *디코드*다. 두 단계가 한 GPU를 함께 쓰면, 진행 중인 디코드와 같은 스텝에 들어간 프리필이 그 스텝을 늘리고, 그 GPU에서 스트리밍 중인 모든 요청이 멈춘다. 처방은 두 가지다. *청크 프리필*은 긴 프리필을 조각내 디코드와 함께 배치해, 스텝 하나가 짊어지는 일의 양을 묶는다[1, 2]. *프리필–디코드(PD) 분리*는 두 단계를 서로 다른 GPU에서 돌리고, 프리필 GPU가 만든 KV 캐시를 디코드 GPU로 보낸다[3, 4, 5].
 
-분리는 격리의 대가로 KV 캐시 전송을 치르며, 발표된 시스템들은 이 전송을 빠른 연결 위에서 한다. InfiniBand[4], RDMA[5], 또는 노드 안의 NVLink[3]다. 가장 싼 단일 GPU 클라우드 인스턴스에는 이 중 어느 것도 없다. AWS에서 g6e, g7, g7e 계열의 2xlarge는 GPU가 한 장이고, Elastic Fabric Adapter(EFA)도 ENA Express도 없다[6]. 같은 계열의 8xlarge는 EFA를 주지만 시간당 가격이 약 1.6~2배다[7, 8]. 공개 문서는 TCP 위의 분리를 권하지 않는다. llm-d는 이를 “extremely slow”, “targeted for local development”라고 부르고[9], NVIDIA Dynamo는 RDMA가 없으면 TTFT가 200~500배 느려진다고 경고하며 통합 서빙을 권한다[10]. TCP 경로가 얼마나 느린지, 그 위의 분리가 잘 설정한 같은 자리 배치를 여전히 이기는지 보여 주는 공개 측정은 드물다.
+분리는 격리의 대가로 KV 캐시 전송을 치르며, 발표된 시스템들은 이 전송을 빠른 연결 위에서 한다. InfiniBand[4], RDMA[5], 또는 노드 안의 NVLink[3]다. 가장 싼 단일 GPU 클라우드 인스턴스에는 이 중 어느 것도 없다. AWS에서 g6e, g7, g7e 계열의 2xlarge는 GPU가 한 장이고, Elastic Fabric Adapter(EFA)도 ENA Express도 없다[6]. 같은 계열의 8xlarge는 EFA를 주지만 시간당 가격이 1.6~2배다[7, 8]. 공개 문서는 TCP 위의 분리를 권하지 않는다. llm-d는 이를 “extremely slow”, “targeted for local development”라고 부르고[9], NVIDIA Dynamo는 RDMA가 없으면 TTFT가 200~500배 느려진다고 경고하며 통합 서빙을 권한다[10]. TCP 경로가 얼마나 느린지, 그 위의 분리가 잘 설정한 같은 자리 배치를 여전히 이기는지 보여 주는 공개 측정은 드물다.
 
 우리 질문은 이런 인스턴스로 규모를 넓히는 데서 나왔다. TCP로 이은 단일 GPU 노드 여러 대에는 프리필 간섭과 반복되는 프리필 작업에 맞설 수단이 여럿 있다. 청크 프리필, 분리, llm-d 같은 접두어 캐시 인지 라우팅[11], LMCache 같은 KV 캐시 오프로딩[12]이다. 이 가운데 청크 프리필과 분리는 같은 문제, 곧 다른 요청의 프리필이 일으키는 디코드 멈춤을 겨냥한다. 그리고 그 해결에 네트워크 전송이라는 값을 치르는 것은 분리뿐이다. 그래서 우리는 청크 크기를 조정하고 나서도 TCP 위의 분리를 고려할 가치가 있는지, 있다면 어디서인지 묻는다.
 
@@ -59,11 +59,11 @@ AWS us-east-1의 한 가용 영역에서 단일 GPU 인스턴스 세 종류를 �
 
 | 인스턴스 | GPU | GPU 메모리 | 시간당 $ | 쓴 곳 |
 |---|---|---|---|---|
-| g7.2xlarge | RTX PRO 4500 | 32 GB | – | 입력 길이 비교, 첫 전송 튜닝, 대역폭 제한, GPU 간 비교 |
+| g7.2xlarge | RTX PRO 4500 | 32 GB | 2.520 | 입력 길이 비교, 첫 전송 튜닝, 대역폭 제한, GPU 간 비교 |
 | g6e.2xlarge | L40S | 48 GB | 2.242 | GPU 간 비교 |
 | g7e.2xlarge | RTX PRO 6000 | 96 GB | 3.363 | 클러스터 배치 그룹, 청크 스윕, 맞대결, 확장, 반복 |
 
-<p class="cap"><b>표 1.</b> GPU 인스턴스(각각 GPU 한 장, EFA 없음). 가격은 us-east-1 온디맨드이며, 이 논문의 원가는 g7e 가격으로 계산했다. g7 가격은 기록하지 않았고, 이 논문의 원가 중 g7 가격에 기대는 것은 없다.</p>
+<p class="cap"><b>표 1.</b> GPU 인스턴스(각각 GPU 한 장, EFA 없음). 가격은 AWS 가격 목록[8]의 us-east-1 온디맨드 Linux 가격이며, 이 보고서의 원가는 g7e 가격으로 계산했다.</p>
 
 vLLM v0.30.0(NIXL 1.4.1)과 NIXL의 끌어오기(pull) 커넥터를 썼다. 디코드 노드가 프리필 노드에서 KV 캐시를 읽는 방식이다. 따로 적지 않으면 분리 런은 초기 회차에서 조정한 UCX 환경 변수 일곱 개를 썼다(부록 C). 예외는 프리필 청크 8,192토큰을 쓴 런 세 개로, 세그먼트 크기 두 변수만 설정했다. 서버는 GPU 메모리 사용률 0.90(KV를 맞춘 단일 노드 런은 0.42, 호스트 경유 런은 0.70), 동시 시퀀스 최대 256, 문맥 32,768토큰(GPU 간 비교의 31B FP8 런은 16,384)을 썼다. 분리 쪽은 기본값을 유지했다. 두 노드 모두 청크 2,560토큰(위의 세 런은 프리필 노드에 8,192), 디코드 노드 시퀀스 256, NIXL 기본 작업 스레드 네 개다.
 
@@ -263,7 +263,7 @@ NIXL(버전 1.4.1)은 전송 하나를 작업 스레드 최대 네 개에 넘긴
 
 ### 7.2 RDMA, EFA, 범위
 
-EFA는 같은 계열의 8xlarge에 있다. g6e와 g7e에서는 GPUDirect RDMA가 없고[7], 제3자 목록에 따르면 시간당 가격은 약 1.6~2배다[8]. 그 크기는 vCPU도 네 배이고, NIXL은 UCX over TCP 대신 libfabric으로 EFA를 쓰므로, 비교에서 바뀌는 것은 네트워크만이 아니다. EFA는 식 (2)의 전송 항을 줄이겠지만 잔차, 단계 사이의 고정 분할, 복제본의 청크 절충은 줄이지 않는다. 우리 모델에서는 TCP 흐름 하나보다 열 배 빠른 전송이 교차 길이를 약 3~5.5K토큰으로 옮긴다. EFA는 재지 않았다. 흐름당 상한은 AWS의 정책이고 NIXL의 분할 규칙은 한 버전의 것이다. 다른 클라우드와 버전에서는 먼저 iperf로 흐름 하나와 여러 개를 재 보라.
+EFA는 같은 계열의 8xlarge에 있다(g6e 25 Gbps, g7·g7e 100 Gbps). GPUDirect RDMA는 g7.8xlarge에는 있지만 g6e.8xlarge와 g7e.8xlarge에는 없고[7, 6], 시간당 가격은 1.6~2배다(g7e 5.27 대 3.36달러, g7 4.09 대 2.52달러, g6e 4.53 대 2.24달러)[8]. 그 크기는 vCPU도 네 배이고, NIXL은 UCX over TCP 대신 libfabric으로 EFA를 쓰므로, 비교에서 바뀌는 것은 네트워크만이 아니다. EFA는 식 (2)의 전송 항을 줄이겠지만 잔차, 단계 사이의 고정 분할, 복제본의 청크 절충은 줄이지 않는다. 우리 모델에서는 TCP 흐름 하나보다 열 배 빠른 전송이 교차 길이를 약 3~5.5K토큰으로 옮긴다. EFA는 재지 않았다. 흐름당 상한은 AWS의 정책이고 NIXL의 분할 규칙은 한 버전의 것이다. 다른 클라우드와 버전에서는 먼저 iperf로 흐름 하나와 여러 개를 재 보라.
 
 ## 8. 한계
 
@@ -297,11 +297,11 @@ AI 코딩 도우미(Claude)를 측정·분석 스크립트 작성, 클라우드 
 - [1] Amey Agrawal, Ashish Panwar, Jayashree Mohan, Nipun Kwatra, Bhargav S. Gulavani, Ramachandran Ramjee. SARATHI: Efficient LLM Inference by Piggybacking Decodes with Chunked Prefills. arXiv preprint arXiv:2308.16369. 2023.
 - [2] Amey Agrawal et al. Taming Throughput-Latency Tradeoff in LLM Inference with Sarathi-Serve. 18th USENIX Symposium on Operating Systems Design and Implementation (OSDI 24). 2024.
 - [3] Yinmin Zhong, Shengyu Liu, Junda Chen, Jianbo Hu, Yibo Zhu, Xuanzhe Liu, Xin Jin, Hao Zhang. DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving. 18th USENIX Symposium on Operating Systems Design and Implementation (OSDI 24). 2024.
-- [4] Pratyush Patel, Esha Choukse, Chaojie Zhang, Aashaka Shah, I\~nigo Goiri, Saeed Maleki, Ricardo Bianchini. Splitwise: Efficient Generative LLM Inference Using Phase Splitting. ACM/IEEE 51st Annual International Symposium on Computer Architecture (ISCA). 2024. <https://doi.org/10.1109/ISCA59077.2024.00019>
+- [4] Pratyush Patel, Esha Choukse, Chaojie Zhang, Aashaka Shah, Iñigo Goiri, Saeed Maleki, Ricardo Bianchini. Splitwise: Efficient Generative LLM Inference Using Phase Splitting. ACM/IEEE 51st Annual International Symposium on Computer Architecture (ISCA). 2024. <https://doi.org/10.1109/ISCA59077.2024.00019>
 - [5] Ruoyu Qin, Zheming Li, Weiran He et al. Mooncake: Trading More Storage for Less Computation — A KVCache-centric Architecture for Serving LLM Chatbot. 23rd USENIX Conference on File and Storage Technologies (FAST 25). 2025.
 - [6] Amazon Web Services. Specifications for Amazon EC2 accelerated computing instances. 2026. <https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html>
 - [7] Amazon Web Services. Elastic Fabric Adapter for AI/ML and HPC workloads on Amazon EC2 (Amazon EC2 User Guide). 2026. <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html>
-- [8] Vantage. EC2 instance price listing: g7e.8xlarge and g6e.8xlarge (us-east-1, on demand). 2026. <https://instances.vantage.sh/>
+- [8] Amazon Web Services. AWS Price List bulk file for Amazon EC2, us-east-1 (on-demand Linux, shared tenancy). 2026. <https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv>
 - [9] llm-d project. Disaggregated Serving (documentation, v0.9). 2026. <https://llm-d.ai/docs/architecture/advanced/disaggregation>
 - [10] NVIDIA. Disaggregated Inference Communication Guide (Dynamo v1.3.0 documentation). 2026. <https://docs.nvidia.com/dynamo/v1.3.0/kubernetes-deployment/operate/disagg-communication>
 - [11] llm-d project. llm-d Architecture: Prefix-Cache Aware Routing. 2026. <https://llm-d.ai/docs/architecture>
