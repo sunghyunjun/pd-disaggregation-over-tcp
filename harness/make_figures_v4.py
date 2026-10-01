@@ -25,43 +25,68 @@ S1, S2, S3, S4, S5 = mf.S1, mf.S2, mf.S3, mf.S4, mf.S5
 
 
 def fig_boundary(out, path):
+    """Figure 7: model prediction of the lowest TTFT limit each side can meet together with the gap limit."""
     B = json.load(open(path))
     c = B["curves"]; L = [x / 1024 for x in c["L"]]
-    fig, axes = plt.subplots(1, 2, figsize=(7.4, 3.3), sharey=True, gridspec_kw={"wspace": 0.08})
+    pd15, pd1, pd18 = c["pd_m1.5_s"], c["pd_m1_s"], c["pd_m1.8_s"]
+    GRAY = "#8f8f8a"
+    fig, axes = plt.subplots(1, 2, figsize=(7.4, 3.4), sharey=True, gridspec_kw={"wspace": 0.08})
     meta = {}
-    for ax, G in zip(axes, (50, 30)):
-        rep = c[f"G{G}"]["replica_ttft_s"]
-        pdh = c["pd_hybrid_m1_s"]
-        xs = [x for x, r in zip(L, rep) if r is not None]
-        ys = [r for r in rep if r is not None]
-        # shade: only disaggregation meets both limits (PD below the replica curve, or replicas infeasible)
+    meas = {50: (0.194, "replicas, chunk 1,024"), 30: (0.239, "replicas, chunk 512")}
+    for ax, G, tag in zip(axes, (50, 30), "ab"):
+        rep = c[f"G{G}"]["replica_ttft_s"]; endL = c[f"G{G}"]["end_L"] / 1024
+        inside = [x <= endL for x in L]
         top = [r if r is not None else 1e3 for r in rep]
-        ax.fill_between(L, pdh, top, where=[p < t for p, t in zip(pdh, top)], color=S2, alpha=0.30, lw=0, interpolate=True)
-        ax.fill_between(L, [0.05] * len(L), [min(p, t) for p, t in zip(pdh, top)], color=mf.NEUTRAL, alpha=0.10, lw=0)
+        # regions
+        ax.fill_between(L, pd15, top, where=[p < t and ok for p, t, ok in zip(pd15, top, inside)], color=S2, alpha=0.30,
+                        lw=0, interpolate=True)
+        floor = [min(t, p) if ok else t for t, p, ok in zip(top, pd15, inside)]
+        ax.fill_between(L, [0.05] * len(L), [min(f, 1e3) for f in floor], color=mf.NEUTRAL, alpha=0.12, lw=0)
+        ax.fill_between([x for x, ok in zip(L, inside) if ok], [p for p, ok in zip(pd18, inside) if ok],
+                        [p for p, ok in zip(pd1, inside) if ok], color=S2, alpha=0.13, lw=0)
+        # extrapolated range
+        ax.axvspan(16, 48, facecolor="none", edgecolor="#e6e6e1", hatch="///", lw=0, zorder=0)
+        ax.axvline(16, color=INK2, lw=0.8)
+        for x in (4, 16):
+            ax.plot([x], [0.1], marker="^", color=INK2, ms=5, clip_on=False, zorder=5)
+        ax.text(16.6, 0.105, "extrapolated", fontsize=6.6, color=INK2, va="bottom")
+        # reference TTFT limits
+        for T in (1, 3):
+            ax.axhline(T, color=GRAY, lw=0.7, ls=(0, (1, 2)))
+            ax.text(2.1, T * 1.05, f"TTFT {T} s", fontsize=6.4, color=GRAY, va="bottom")
+        # curves
+        xs = [x for x, r in zip(L, rep) if r is not None]; ys = [r for r in rep if r is not None]
         ax.plot(xs, ys, color=S1, lw=2.2, label="Replicas, largest chunk within the gap limit")
-        ax.plot(L, pdh, color=S2, lw=2.2, label="1P1D over TCP, hybrid KV (as measured)")
-        ax.plot(L, c["pd_all_global_m1_s"], color=S4, lw=1.8, ls=(0, (6, 2.5)), label="1P1D over TCP, KV as if every layer were global")
-        ax.plot(L, c["pd_fast_link_s"], color=S3, lw=1.8, ls=(0, (1.5, 1.8)), label="1P1D, fast link (5% of TCP transfer time)")
-        ax.axvline(16, color=INK2, lw=0.9, ls=(0, (4, 3)))
-        ax.text(15.3, 0.115, "calibrated\n≤16K", ha="right", va="bottom", fontsize=6.8, color=INK2)
-        ax.text(17, 0.115, "extrapolated", ha="left", va="bottom", fontsize=6.8, color=INK2)
-        if xs and xs[-1] < L[-1]:
-            ax.annotate("no chunk ≥128\nmeets the limit", (xs[-1], ys[-1]), xytext=(xs[-1] * 0.62, ys[-1] * 1.9),
-                        fontsize=6.6, color=S1, arrowprops=dict(arrowstyle="-", color=S1, lw=0.8))
+        Lin = [x for x, ok in zip(L, inside) if ok]; Lout = [x for x, ok in zip(L, inside) if not ok]
+        ax.plot(Lin, [p for p, ok in zip(pd15, inside) if ok], color=S2, lw=2.2,
+                label="1P1D over TCP (this checkpoint's KV, m = 1.5; band m = 1–1.8)")
+        if Lout:
+            ax.plot(Lout, [p for p, ok in zip(pd15, inside) if not ok], color=GRAY, lw=1.6, ls=(0, (2, 1.6)))
+            ax.text(47, 0.3, f"1P1D decode gap\n> {G} ms beyond here", fontsize=6.4, color=GRAY, va="bottom", ha="right")
+        ax.plot(Lin, [p for p, ok in zip(c["pd_fast_s"], inside) if ok], color=S3, lw=1.8, ls=(0, (1.2, 1.6)),
+                label="1P1D, 95 Gbps link")
+        ax.plot(Lin, [p for p, ok in zip(c["pd_kv220_s"], inside) if ok], color=S2, lw=1.0, ls=(0, (6, 2, 1.5, 2)),
+                label="1P1D, KV 220 KiB/token (sliding layers keep all)")
+        # measured 4K anchors
+        ax.plot([4], [meas[G][0]], ls="none", marker="o", mfc="white", mec=S1, mew=1.4, ms=6)
+        ax.plot([4], [0.362], ls="none", marker="s", mfc="white", mec=S2, mew=1.4, ms=6)
         ax.set_xscale("log", base=2); ax.set_yscale("log")
-        ax.set_xticks([2, 4, 8, 16, 32, 64]); ax.set_xticklabels(["2K", "4K", "8K", "16K", "32K", "64K"])
-        ax.set_yticks([0.25, 0.5, 1, 2, 4, 8, 16]); ax.set_yticklabels(["0.25", "0.5", "1", "2", "4", "8", "16"])
-        ax.set_xlim(2, 64); ax.set_ylim(0.1, 25)
+        ax.set_xticks([2, 4, 8, 16, 32]); ax.set_xticklabels(["2K", "4K", "8K", "16K", "32K"])
+        ax.set_yticks([0.125, 0.25, 0.5, 1, 2, 4, 8, 16]); ax.set_yticklabels(["0.125", "0.25", "0.5", "1", "2", "4", "8", "16"])
+        ax.set_xlim(2, 48); ax.set_ylim(0.1, 20)
         ax.set_xlabel("Input length (tokens)")
-        ax.set_title(f"({'a' if G == 50 else 'b'}) Gap limit {G} ms", fontsize=8.5)
-        meta[f"G{G}"] = {"first_pd_only": B["map"]["grid"][f"G{G}_hybrid_m1"]["first_pd_only"]}
+        ax.set_title(f"({tag}) Model, gap limit {G} ms", fontsize=8.5)
+        cr = c[f"G{G}"].get("crossover_m1.5")
+        meta[f"G{G}"] = {"crossover_m1.5": cr, "end_L": c[f"G{G}"]["end_L"], "m": 1.5}
     axes[0].set_ylabel("Lowest TTFT limit that can be met (s)")
     hs, ls_ = axes[0].get_legend_handles_labels()
-    hs += [Patch(facecolor=S2, alpha=0.30, edgecolor="none"), Patch(facecolor=mf.NEUTRAL, alpha=0.10, edgecolor="none")]
-    ls_ += ["Only 1P1D meets both limits (hybrid KV)", "Neither meets the TTFT limit"]
-    fig.legend(hs, ls_, loc="upper center", bbox_to_anchor=(0.5, 0.0), ncol=2, fontsize=7.2)
-    fig.suptitle("Model prediction: 26B FP8, g7e, low load, calibrated at 4K and 16K. Above a curve, that side meets both limits",
-                 x=0.01, ha="left", fontsize=7.4, color=INK2, y=1.03)
+    hs += [Line2D([0], [0], ls="none", marker="o", mfc="white", mec=INK2, ms=6),
+           Patch(facecolor=S2, alpha=0.30, edgecolor="none"), Patch(facecolor=mf.NEUTRAL, alpha=0.12, edgecolor="none")]
+    ls_ += ["Measured at 4K (circle: replicas, square: 1P1D)", "Only 1P1D meets both limits",
+            "Neither replicas nor 1P1D over TCP"]
+    fig.legend(hs, ls_, loc="upper center", bbox_to_anchor=(0.5, 0.0), ncol=2, fontsize=7.0)
+    fig.suptitle("Model prediction for 26B FP8 on g7e at low load, calibrated at 4K and 16K (triangles). "
+                 "Above a curve, that side meets both limits", x=0.01, ha="left", fontsize=7.2, color=INK2, y=1.03)
     v2.save(fig, out, "v4_boundary", meta)
 
 

@@ -1,0 +1,60 @@
+
+
+
+
+
+
+
+TTFT-step differences (rate 1 total / rate 2 total): 2560->1024 18.5 19.0  1024->512 11.25 12.0
+  Dsmall=16.03 m=1.0: G50 ((18496, 528), (19008, 512))  G30 ((8512, 368), (8832, 352))
+  Dsmall=16.03 m=1.5: G50 ((13760, 672), (14144, 656))  G30 ((6336, 448), (6336, 448))
+  Dsmall=14.0 m=1.0: G50 ((18496, 528), (22336, 480))  G30 ((10688, 368), (11072, 352))
+  Dsmall=14.0 m=1.5: G50 ((13760, 672), (14144, 656))  G30 ((8064, 432), (8064, 432))
+  Dsmall=12.0 m=1.0: G50 ((18496, 528), (26880, 432))  G30 ((13440, 352), (13760, 352))
+  Dsmall=12.0 m=1.5: G50 ((13760, 672), (14144, 656))  G30 ((10368, 416), (10368, 416))
+
+per-GPU prefill capacity (req/s/GPU): replicas 1/(TTFT-o) at largest admissible chunk; 1P1D 1/(2*P prefill at 8192)
+
+stable crossing (PD below replicas for all longer L up to end of scan)
+  G50: m1 19008  m1.5 14144  m1.8 12544
+  G30: m1 8832  m1.5 6336  m1.8 5760
+
+TTFT ratio rep/PD at L (m=1.5, m=1), G50 and G30
+
+longest L meeting both limits for a TTFT limit T (G50): replicas vs 1P1D m=1.5 (with decode-gap line cap 36.7K)
+  T=1.0: replicas up to 15552, 1P1D m1.5 up to 16192, m1 up to 14144
+  T=1.5: replicas up to 19904, 1P1D m1.5 up to 22464, m1 up to 20352
+  T=2.0: replicas up to 23360, 1P1D m1.5 up to 27648, m1 up to 25536
+  T=3.0: replicas up to 29568, 1P1D m1.5 up to 36480, m1 up to 34304
+  T=5.0: replicas up to 39232, 1P1D m1.5 up to 36736, m1 up to 36736
+  G30 T=1.0: replicas up to 11520, 1P1D m1.5 up to 16192
+  G30 T=1.5: replicas up to 14848, 1P1D m1.5 up to 18368
+  G30 T=2.0: replicas up to 17664, 1P1D m1.5 up to 18368
+
+g7 NVFP4 consistent refit (k0*c/2560 in fit and evaluation)
+  k0=106.9 b=3.763ns o7=51
+  L=4096: gap 131.2/131.2 (+0.0%)  TTFT 278/278 (+0.0%)
+  L=16384: gap 254.5/254.5 (+0.0%)  TTFT 1430/1324 (-7.4%)
+  L=32000: gap 375.7/402.5 (+7.1%)  TTFT 3507/3470 (-1.1%)
+per-GPU prefill capacity (req/s/GPU): replicas 1/(TTFT-o) at largest admissible chunk; 1P1D 1/(2*P prefill at 8192)
+  G50 L=8192: replicas 2.801  1P1D 2.186
+  G50 L=16384: replicas 0.950  1P1D 0.787
+  G50 L=24576: replicas 0.469  1P1D 0.410
+  G50 L=32768: replicas 0.287  1P1D 0.252
+  G30 L=8192: replicas 1.769  1P1D 2.186
+  G30 L=16384: replicas 0.585  1P1D 0.787
+  G30 L=24576: replicas 0.275  1P1D 0.410
+  G30 L=32768: replicas 0.166  1P1D 0.252
+
+stable crossing (PD below replicas for all longer L up to end of scan)
+TTFT ratio rep/PD at L (m=1.5, m=1), G50 and G30
+  G50 L=16384: rep 1.09  PD m1.5 1.01 (8% lower)  m1 1.16 (-6% lower)
+  G50 L=20480: rep 1.58  PD m1.5 1.33 (16% lower)  m1 1.51 (4% lower)
+  G50 L=24576: rep 2.17  PD m1.5 1.69 (22% lower)  m1 1.89 (13% lower)
+  G50 L=32768: rep 3.53  PD m1.5 2.54 (28% lower)  m1 2.79 (21% lower)
+  G30 L=16384: rep 1.75  PD m1.5 1.01 (42% lower)  m1 1.16 (34% lower)
+  G30 L=20480: rep 2.62  PD m1.5 1.33 (49% lower)  m1 1.51 (42% lower)
+  G30 L=24576: rep 3.68  PD m1.5 1.69 (54% lower)  m1 1.89 (49% lower)
+  G30 L=32768: rep 6.06  PD m1.5 2.54 (58% lower)  m1 2.79 (54% lower)
+
+longest L meeting both limits for a TTFT limit T (G50): replicas vs 1P1D m=1.5 (with decode-gap line cap 36.7K)

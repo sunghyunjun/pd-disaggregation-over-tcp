@@ -962,16 +962,24 @@
  },
  "v4_boundary": {
   "G50": {
-   "first_pd_only": [
-    21247,
-    1.587
-   ]
+   "crossover_m1.5": {
+    "L": 14144,
+    "pd_ttft_s": 0.859,
+    "replica_ttft_s": 0.872,
+    "replica_chunk": 656
+   },
+   "end_L": 36736,
+   "m": 1.5
   },
   "G30": {
-   "first_pd_only": [
-    10624,
-    0.794
-   ]
+   "crossover_m1.5": {
+    "L": 6336,
+    "pd_ttft_s": 0.424,
+    "replica_ttft_s": 0.43,
+    "replica_chunk": 448
+   },
+   "end_L": 18432,
+   "m": 1.5
   }
  },
  "fig01_request_vs_system": {
