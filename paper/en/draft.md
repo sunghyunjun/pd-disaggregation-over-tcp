@@ -2,7 +2,7 @@
 
 *Measurements and a Calibrated Model on Single-GPU Cloud Instances*
 
-Sunghyun Jun · Independent Researcher · <span class="todo">contact email</span> · <span class="todo">draft v3, 2026-10-01</span>
+Sunghyun Jun · Independent Researcher · <span class="todo">contact email</span> · <span class="todo">draft v4, 2026-10-01</span>
 
 ## Abstract
 
@@ -75,7 +75,7 @@ For 26B NVFP4, vLLM reported 140, 260, and 412.5 MiB per request at 4K, 16K, an
 
 We compared two approaches at equal GPU count. In the *replica* configuration, each node runs a colocated server that does both prefill and decode, and a round-robin proxy spreads requests over the nodes. Replicas use chunked prefill; the *chunk* is vLLM's maximum number of tokens per scheduler step. In the *disaggregated* configuration there are prefill-only (P) and decode-only (D) nodes, written <i>x</i>P<i>y</i>D for <i>x</i> prefill and <i>y</i> decode nodes.
 
-Three practical details shaped the comparison. First, for Gemma 4, vLLM rejected chunks smaller than 2,496 tokens, the budget of one video item, with images disabled or with images and audio disabled, and accepted them with images, audio, and video all disabled (every modality set to 0 in <code>–limit-mm-per-prompt</code>); we did not test other combinations. Our early rounds therefore used 2,560 tokens; the last two swept 256–2,048 and added 512 for 26B. With every modality disabled, a 2,560-token chunk failed at engine start, so the 2,560 controls kept images disabled only. Second, until the last round the replicas' proxy, a small aiohttp program, allowed at most 100 concurrent connections, and requests beyond that waited in the proxy; the eleven replica runs that reached the cap are caution data (Appendix B.1). Third, early disaggregated runs used vLLM's test proxy for NIXL (FastAPI with httpx); the last two rounds added an aiohttp proxy with the same request flow and no connection limit (Appendix B.1).
+Three practical details shaped the comparison. First, for Gemma 4, vLLM rejected chunks smaller than 2,496 tokens, the budget of one video item, with images disabled or with images and audio disabled, and accepted them with images, audio, and video all disabled (every modality set to 0 in <code>--limit-mm-per-prompt</code>); we did not test other combinations. Our early rounds therefore used 2,560 tokens; the last two swept 256–2,048 and added 512 for 26B. With every modality disabled, a 2,560-token chunk failed at engine start, so the 2,560 controls kept images disabled only. Second, until the last round the replicas' proxy, a small aiohttp program, allowed at most 100 concurrent connections, and requests beyond that waited in the proxy; the eleven replica runs that reached the cap are caution data (Appendix B.1). Third, early disaggregated runs used vLLM's test proxy for NIXL (FastAPI with httpx); the last two rounds added an aiohttp proxy with the same request flow and no connection limit (Appendix B.1).
 
 ### 3.4 Workloads
 
@@ -147,7 +147,7 @@ with V(L) from Eq. (1), C<sub>flow</sub> the per-flow cap, and <i>m</i> as defi
 | 26B FP8, 4K | none | ≥1 (512 or 1,024), ≤$1.87, 199–247 ms | ≥1, ≤$1.88, 384 ms |
 | 31B NVFP4, chat | none | ≥8 (256), ≤$0.67, 117 ms | 4<sup>†</sup>, $1.67, 303–308 ms |
 
-<p class="cap"><b>Table 2.</b> Supported load under the strict SLO (requests/s per GPU; every repeat ≥0.9), cost per million SLO-meeting output tokens at that load (g7e, \3.363 per GPU-hour, client excluded), and median TTFT at that load. “\ge” and “\le”: the configuration still passed at the highest rate we measured; for 31B replicas that is one run at 8, and the run at 6 reached the proxy's connection cap and is caution data.^\dagger$ Passed, but borderline (a repeat within 0.85–0.95). The 26B FP8 1P1D value uses vLLM's test proxy, the only one measured; with the test proxy, 31B 1P1D failed at 4 (0.885).</p>
+<p class="cap"><b>Table 2.</b> Supported load under the strict SLO (requests/s per GPU; every repeat ≥0.9), cost per million SLO-meeting output tokens at that load (g7e, $3.363 per GPU-hour, client excluded), and median TTFT at that load. “≥” and “≤”: the configuration still passed at the highest rate we measured; for 31B replicas that is one run at 8, and the run at 6 reached the proxy's connection cap and is caution data. <sup>†</sup> Passed, but borderline (a repeat within 0.85–0.95). The 26B FP8 1P1D value uses vLLM's test proxy, the only one measured; with the test proxy, 31B 1P1D failed at 4 (0.885).</p>
 
 Against replicas at a tuned chunk, disaggregation did not serve more. For 26B with 4K inputs, 1,024-token replicas supported 5 requests/s per GPU and 1P1D 3. Without the proxy cap, the replicas passed 4 and 5 in every repeat and collapsed at 6 (0.19), with a small margin at 5 (longest gaps of 46.3 and 47.1 ms); 512-token replicas passed 1–4. 1P1D was borderline at 4 (0.885–0.992 with our aiohttp proxy, 0.77–0.98 with the test proxy) and collapsed at 5 (0.18) as prefills queued and gaps grew. Appendix Table F1 lists every repeat with its interval.
 
@@ -174,7 +174,7 @@ The map picks the best configuration of each kind and cannot decide cells where 
 
 ### 5.3 When the chunk cannot shrink
 
-The comparison turns when the chunk is held at 2,560 tokens. In vLLM v0.30.0, Gemma 4 rejected chunks below 2,496 tokens, one video item's budget, in both configurations we tested that kept video input enabled (Section 3.3), so a service that accepts video is likely in this position; we did not test settings that lower that budget, or whether image or audio input alone forces it. Measured against replicas at a 2,560-token chunk, disaggregation looked decisive (Figure 5, dotted lines). For 26B with 4K inputs, replicas passed 1 request/s per GPU narrowly (0.933–0.958 in five runs) and failed at 2 (0.37–0.64), while 1P1D passed 3; the cost per SLO-meeting token was \2.00 against \0.63 (Table 2). For 26B FP8 and for 31B chat, 2,560-token replicas met the strict SLO at no measured load, while 1P1D did. In the top row of Figure 6, disaggregation wins at gap limits of 30–50 ms for both 26B variants and 40–75 ms for 31B chat whenever TTFT may exceed 0.25 s. We measured this case with images disabled only, not with multimodal traffic itself.
+The comparison turns when the chunk is held at 2,560 tokens. In vLLM v0.30.0, Gemma 4 rejected chunks below 2,496 tokens, one video item's budget, in both configurations we tested that kept video input enabled (Section 3.3), so a service that accepts video is likely in this position; we did not test settings that lower that budget, or whether image or audio input alone forces it. Measured against replicas at a 2,560-token chunk, disaggregation looked decisive (Figure 5, dotted lines). For 26B with 4K inputs, replicas passed 1 request/s per GPU narrowly (0.933–0.958 in five runs) and failed at 2 (0.37–0.64), while 1P1D passed 3; the cost per SLO-meeting token was $2.00 against $0.63 (Table 2). For 26B FP8 and for 31B chat, 2,560-token replicas met the strict SLO at no measured load, while 1P1D did. In the top row of Figure 6, disaggregation wins at gap limits of 30–50 ms for both 26B variants and 40–75 ms for 31B chat whenever TTFT may exceed 0.25 s. We measured this case with images disabled only, not with multimodal traffic itself.
 
 Results from earlier sessions that used 2,560-token replicas (three nodes, input length, weight precision, a real trace, other GPUs, and output correctness) are in Appendix A.
 
@@ -212,6 +212,13 @@ We fitted <i>e</i>, <i>a</i>, and <i>b</i> by least squares to the longest gaps 
 | 26B FP8, g7e, 4K, 1P1D, no placement group | TTFT | 482 | 500 (+4%) | check |
 | 26B FP8, g7e, 16K, 1P1D, no placement group | TTFT | 1,286 | 1,370 (+7%) | check |
 | 26B FP8, g7e, 1P1D decode node, 4K / 16K | longest gap (p90) | 14.4 / 27.8 | – | sets line |
+| 26B NVFP4, g7, 4K, chunk 2,560 | longest gap (p90) | 131.2 | 131.2 | fit |
+|  | TTFT | 278 | 278 | sets <i>o</i> |
+| 26B NVFP4, g7, 16K, chunk 2,560 | longest gap (p90) | 254.5 | 254.5 | fit |
+|  | TTFT | 1,430 | 1,324 (-7%) | check |
+| 26B NVFP4, g7, 32K, chunk 2,560 | longest gap (p90) | 375.7 | 402.5 (+7%) | extrapolation check |
+|  | TTFT | 3,507 | 3,470 (-1%) | extrapolation check |
+| 26B NVFP4, g7, 1P1D decode node, 32K | longest gap (p90) | 43.3 | 43.3 | extrapolation check |
 
 <p class="cap"><b>Table 3.</b> Step-time model against measurements, in ms (low load, 0.125–0.5 requests/s per GPU); percentages are model errors. For 1P1D the model uses Eq. (2) with the runs' 2,560-token prefill chunk, m = 1.5, and the measured per-flow cap (9.54 Gbps in a placement group, 4.97 Gbps outside); the 28 ms residual and m = 1.5 come from the first 4K placement-group run, so that check repeats its configuration. The g7 rows solve a two-parameter version (a per-chunk cost proportional to the chunk size, and <i>b</i>) exactly on the 4K and 16K gaps. Script: <code>harness/boundary_model.py</code>.</p>
 
@@ -252,7 +259,7 @@ Figure 7 plots, for each input length, the lowest TTFT limit each side can meet
 
 ### 7.2 RDMA, EFA, and scope
 
-EFA is available on the 8xlarge sizes of the same instance families, without GPUDirect RDMA on g6e and g7e [7], at roughly 1.6–2× the hourly price according to a third-party listing [8]. Those sizes also have four times the vCPUs, and NIXL would use EFA through libfabric rather than UCX over TCP, so the comparison would change more than the network. EFA would shrink the transfer term of Eq. (2), but not the residual, the fixed split between the phases, or the replicas' chunk trade-off; in our model, a transfer ten times faster than one TCP flow moves the crossover to about 3–5.5K tokens. We did not measure EFA. We did not measure EFA. The per-flow cap is an AWS policy, and NIXL's splitting rule belongs to one version; on other clouds and versions, measure one flow and several flows with iperf first.
+EFA is available on the 8xlarge sizes of the same instance families, without GPUDirect RDMA on g6e and g7e [7], at roughly 1.6–2× the hourly price according to a third-party listing [8]. Those sizes also have four times the vCPUs, and NIXL would use EFA through libfabric rather than UCX over TCP, so the comparison would change more than the network. EFA would shrink the transfer term of Eq. (2), but not the residual, the fixed split between the phases, or the replicas' chunk trade-off; in our model, a transfer ten times faster than one TCP flow moves the crossover to about 3–5.5K tokens. We did not measure EFA. The per-flow cap is an AWS policy, and NIXL's splitting rule belongs to one version; on other clouds and versions, measure one flow and several flows with iperf first.
 
 ## 8. Limitations
 

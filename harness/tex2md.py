@@ -53,11 +53,12 @@ def math(m):
     m = re.sub(r"\\(mathrm|text)\{([^{}]*)\}", r"\2", m)
     reps = [(r"\times\,", "× "), (r"\times", "×"), (r"\ge", "≥"), (r"\le", "≤"),
             (r"\div", "÷"), (r"\pm", "±"), (r"\dagger", "†"), (r"\max", "max"), (r"\min", "min"), (r"\approx", "≈"),
-            (r"\,", " "), ("{,}", ",")]
+            (r"\,", " "), ("{,}", ","), (r"\lceil", "⌈"), (r"\rceil", "⌉"), (r"\sum", "Σ"), (r"\tfrac", "")]
     for a, b in reps:
         m = m.replace(a, b)
     m = re.sub(r"_\{([^{}]*)\}", r"<sub>\1</sub>", m)
-    m = re.sub(r"\^\{?([^{} ]*)\}?", r"<sup>\1</sup>", m)
+    m = re.sub(r"_([A-Za-z0-9])", r"<sub>\1</sub>", m)
+    m = re.sub(r"\^\{([^{}]*)\}|\^(\S)", lambda g: "<sup>" + (g.group(1) or g.group(2)) + "</sup>", m)
     m = m.replace("{", "").replace("}", "")
     if re.fullmatch(r"[A-Za-z]", m):
         return f"<i>{m}</i>"
@@ -65,12 +66,13 @@ def math(m):
 
 
 def inline(s, ctx):
+    s = s.replace("\\$", "\x00DOLLAR\x00")
     s = sub_cmd(s, "todo", lambda a: f'<span class="todo">{a}</span>')
     s = sub_cmd(s, "url", lambda a: f"<{a}>")
     s = sub_cmd(s, "footnote", lambda a: f" ({a})")
     s = sub_cmd(s, "emph", lambda a: f"*{a}*")
     s = sub_cmd(s, "textbf", lambda a: f"**{a}**")
-    s = sub_cmd(s, "texttt", lambda a: "<code>" + a.replace("\\_", "_").replace("-{}-", "--") + "</code>")
+    s = sub_cmd(s, "texttt", lambda a: "<code>" + a.replace("\\_", "_").replace("-{}-", "\x00DD\x00") + "</code>")
     s = sub_cmd(s, "eqref", lambda a: f"({ctx['labels'][a]})")
     s = sub_cmd(s, "ref", lambda a: ctx["labels"][a])
     s = sub_cmd(s, "cite", lambda a: "[" + ", ".join(str(ctx["cite"](k.strip())) for k in a.split(",")) + "]")
@@ -81,7 +83,7 @@ def inline(s, ctx):
             ("D\\'ej\\`aVu", "DéjàVu"), ("et al.\\", "et al.")]
     for a, b in reps:
         s = s.replace(a, b)
-    return s
+    return s.replace("\x00DOLLAR\x00", "$").replace("\x00DD\x00", "--")
 
 
 def bib_entries(path):
@@ -115,7 +117,7 @@ def bib_entries(path):
 def clean_bib(v):
     v = v.replace("\\textasciitilde{}", "~").replace("\\url", "").replace("\\&", "&").replace("---", "—").replace("--", "–")
     v = v.replace("\\_", "_")
-    v = v.replace("\\'e", "é").replace("\\`a", "à").replace("\\'", "").replace('\\"', "")
+    v = v.replace("\\~n", "ñ").replace("\\'e", "é").replace("\\`a", "à").replace("\\'", "").replace('\\"', "")
     v = re.sub(r"\$\\times\$", "×", v)
     return re.sub(r"[{}]", "", v).replace("\\#", "#").strip()
 
@@ -169,7 +171,7 @@ def main():
 
     out = [f"# {inline(t1.strip(), ctx)}", "", f"*{inline(t2, ctx)}*", "",
            "Sunghyun Jun · Independent Researcher · " + '<span class="todo">contact email</span>' + " · " +
-           '<span class="todo">draft v3, 2026-10-01</span>', ""]
+           inline(re.search(r"\\date\{(.*)\}", src).group(1), ctx), ""]
     body = body.replace("\\maketitle", "")
     body = re.sub(r"\\(setcounter|renewcommand|counterwithin)\{[^{}]*\}(\{[^{}]*(\{[^{}]*\})?[^{}]*\})?", "", body)
     body = body.replace("\\clearpage", "").replace("\\bibliographystyle{unsrtnat}", "")
@@ -279,7 +281,7 @@ def main():
             inner = re.search(r"\\begin\{tabularx?\}(\{[^}]*\})?\{[^}]*\}(.*?)\\end\{tabularx?\}", b, re.S).group(2)
             inner = inner.replace("\\toprule", "").replace("\\bottomrule", "")
             parts = inner.split("\\midrule")
-            head, rows = parts[0], parts[1] if len(parts) > 1 else ""
+            head, rows = parts[0], "\\\\".join(parts[1:]) if len(parts) > 1 else ""
             def cells(r):
                 return [inline(c.strip(), ctx) for c in re.split(r"(?<!\\)&", r)]
             hrow = [r for r in head.split("\\\\") if r.strip()][0]
