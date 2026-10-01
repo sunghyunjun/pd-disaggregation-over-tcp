@@ -460,7 +460,7 @@ E9의 예측(다섯 항목, 표 E1)은 2026년 9월 30일 13:29 UTC에 당시 �
 
 ## G. 데이터와 코드
 
-측정 하네스, 설정, 분석 스크립트, 네 차례의 모의 심사와 그 스크립트, 요청별 원자료를 공개한다. 이 보고서: doi:10.5281/zenodo.23085600. 코드와 데이터: <https://github.com/sunghyunjun/pd-disaggregation-over-tcp>와 doi:10.5281/zenodo.23085749. 공개 저장소는 비공개 작업 저장소에서 <code>git filter-repo</code>로 만들었다. AWS 계정 ID와 로컬 경로를 치환하고, 런별 원자료 폴더와 내부 메모 폴더를 빼고, 커밋 메시지의 도구 세션 꼬리말을 지우고, 저자 이메일을 하나로 맞췄다. <code>commit-map.txt</code>가 옛 해시와 새 해시를 대응시키며, 커밋 순서와 시각은 보존된다. 저자는 이 문단을 넣기 직전의 비공개 커밋 <code>3f0c44d</code>(공개 <code>c982c14</code>)까지의 원본 저장소를 <code>git bundle</code>로 보관한다. SHA-256은 <code>6723d77d3582c98bcbe0930806cc79957bb176c36abef23acad89b1c34fa61d5</code>이며, 유래를 확인하려는 사람에게 제공한다. 원자료는 측정 회차마다 저장했다(<code>results/&lt;회차&gt;/</code>).
+측정 하네스, 설정, 분석 스크립트, 네 차례의 모의 심사와 그 스크립트, 요청별 원자료를 공개한다. 이 보고서: doi:10.5281/zenodo.23085600. 코드와 데이터: <https://github.com/sunghyunjun/pd-disaggregation-over-tcp>와 doi:10.5281/zenodo.23085749. 공개 저장소는 비공개 작업 저장소에서 <code>git filter-repo</code>로 만들었다. AWS 계정 ID와 로컬 경로와 개인 작업 공간 이름을 치환하거나 지우고, 런별 원자료 폴더와 내부 메모 폴더를 빼고, 커밋 메시지의 도구 세션 꼬리말을 지우고, 저자 이메일을 하나로 맞췄다. <code>commit-map.txt</code>가 옛 해시와 새 해시를 대응시키며, 커밋 순서와 시각은 보존된다. 저자는 이 문단을 넣기 직전의 비공개 커밋 <code>3f0c44d</code>(공개 <code>c982c14</code>)까지의 원본 저장소를 <code>git bundle</code>로 보관한다. SHA-256은 <code>6723d77d3582c98bcbe0930806cc79957bb176c36abef23acad89b1c34fa61d5</code>이며, 유래를 확인하려는 사람에게 제공한다. 원자료는 측정 회차마다 저장했다(<code>results/&lt;회차&gt;/</code>).
 
 | 회차(폴더) | 날짜(UTC) | 인스턴스 | 모델 | 주요 내용 |
 |---|---|---|---|---|
