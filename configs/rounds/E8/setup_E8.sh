@@ -4,7 +4,7 @@
 set -u
 : "${C:?}" "${NODES:?}"
 S="ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15"
-cd <repo>
+cd "${REPO:?set REPO to the repository root on the client node}"
 log(){ echo "[$(date -u +%T)] $*"; }
 log "waiting for client init"
 until $S ubuntu@$C 'test -f /var/log/user-data.log' 2>/dev/null; do sleep 15; done
