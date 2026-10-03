@@ -4,7 +4,7 @@
 
 측정과 보정 모델: RDMA가 없는 단일 GPU 클라우드 인스턴스(AWS g6e, g7, g7e 2xlarge)에서, 기본 vLLM(v0.30.0, NIXL/UCX over TCP)과 Gemma 4 26B·31B로 청크 프리필 복제본과 프리필–디코드(P/D) 분리를 맞댄 결과입니다.
 
-테크니컬 리포트: [doi:10.5281/zenodo.23085600](https://doi.org/10.5281/zenodo.23085600) · [PDF(영어)](paper/en/main.pdf) · [한국어판(마크다운)](paper/ko/draft.md) · 코드와 데이터: [doi:10.5281/zenodo.23085749](https://doi.org/10.5281/zenodo.23085749)
+테크니컬 리포트: [doi:10.5281/zenodo.23085600](https://doi.org/10.5281/zenodo.23085600) · [PDF(영어)](paper/main.pdf) · [한국어판(마크다운)](paper/ko/draft.md) · 코드와 데이터: [doi:10.5281/zenodo.23085749](https://doi.org/10.5281/zenodo.23085749)
 
 ## 세 줄 요약
 
@@ -13,9 +13,9 @@
 - **분리의 첫 토큰 추가 시간은 대부분 KV 전송이었다.** UCX의 TCP 세그먼트를 8 KB에서 256 KB로 올리면 저부하에서 전송이 3.4배 빨라지고, 그다음은 클라우드의 흐름당 상한과 NIXL의 4분할이 속도를 정한다.
 - **청크로 감당하지 못하는 지점은 입력 길이가 정한다.** 측정으로 보정한 스텝 시간 모델은, 저부하와 50 ms 간격 한도에서 입력 약 14K~37K 토큰(불확실성 안에서 하한 11K~34K) 구간에 청크가 너무 많이 필요해져 TCP 위 1P1D가 1초 이상의 첫 토큰 한도를 복제본보다 먼저 지킨다고 예측한다. KV 캐시가 작아야(하이브리드 어텐션) 성립하며, 측정이 아니라 예측이다.
 
-![부하에 따른 엄격 SLO 달성률: 조정한 청크의 복제본 대 1P1D](paper/figures_v4/png/fig5_head_to_head.png)
+![부하에 따른 엄격 SLO 달성률: 조정한 청크의 복제본 대 1P1D](paper/figures/png/fig5_head_to_head.png)
 
-![모델 예측: 입력 길이별로 각 방식이 지킬 수 있는 가장 낮은 첫 토큰 한도](paper/figures_v4/png/fig7_boundary.png)
+![모델 예측: 입력 길이별로 각 방식이 지킬 수 있는 가장 낮은 첫 토큰 한도](paper/figures/png/fig7_boundary.png)
 
 ## TCP로 묶은 작은 GPU 플릿을 위한 절차 (보고서 7.1절)
 
@@ -36,29 +36,32 @@
 ## 저장소 구성
 
 ```
-harness/    측정 하네스와 분석: aggregate.py, safe_runs.py, slo_sensitivity.py,
-            decisive_ci.py, boundary_model.py, make_figures_v4.py, 프록시(rr_proxy.py, pd_proxy.py)
-configs/    vllm serve 플래그 묶음, 회차별 실행 스크립트와 실행표(영어판은 *.en.md)
+analysis/   사후 분석: aggregate.py(런별 지표), safe_runs.py(감사 라벨), slo_sensitivity.py,
+            decisive_ci.py(부록 F), boundary_model.py(6절), make_figures.py(+ fig_*.py), chunk31_buckets.py
+harness/    측정 시점에 노드에서 돌린 스크립트: serve.sh, serve_pair.sh, run_bench.sh, sweep_ladder.sh,
+            프록시(rr_proxy.py, pd_proxy.py, toy_proxy_instr.py), 수집기(node_collect.sh, ss_sample.sh)
+configs/    common/ vllm 플래그 묶음과 모델 표; rounds/<회차>/ 회차별 실행 스크립트와 실행표
+            (README.md 영어, README.ko.md 한국어 원문; E9 스크립트는 사전 등록 커밋과 바이트 동일)
 infra/      Terraform: GPU 노드, 클라이언트 노드, 배치 그룹 (infra/up.sh 전에 ALLOWED_SSH_CIDR 설정)
 results/    all_runs.csv(455런), safe_runs.csv(감사 라벨), per_request.json.gz(요청별 시간)
             런별 원자료 폴더는 릴리즈 자산과 Zenodo에 회차별 tar.gz로 (모든 런에서 생성 텍스트 제거, 길이와 시간은 완전)
-paper/      en/ LaTeX 원고와 PDF, ko/ 한국어판, figures_v4/, reviews/ (모의 심사 4차례)
+paper/      main.pdf와 en/ LaTeX 원고, ko/ 한국어판, figures/, reviews/(모의 심사 4차례), tools/(LaTeX→마크다운, 열람 페이지)
 RESULTS.md  실험 노트(한국어, 영어 안내는 RESULTS.en.md). 마지막 회차 전에 커밋한 예측 포함
 PROTOCOL.md 사전 등록 프로토콜 v1.7(첫 측정 전 커밋, 한국어 원문). 영어 번역은 PROTOCOL.en.md
 ```
 
 ## 보고서 수치와 그림 재현
 
-`aggregate.py`, `safe_runs.py`, `chunk31_buckets.py`, `make_figures_v4.py`(E8·E9의 전송 로그와 소켓 표본)는 런별 원자료를 읽으므로, 먼저 릴리즈 자산(`results-<회차>.tar.gz`, 체크섬 `SHA256SUMS.txt`)을 `results/<회차>/`에 풉니다. `boundary_model.py`와 `decisive_ci.py`는 커밋된 `safe_runs.csv`와 `per_request.json.gz`만으로 돕니다.
+`aggregate.py`, `safe_runs.py`, `chunk31_buckets.py`, `make_figures.py`(E8·E9의 전송 로그와 소켓 표본)는 런별 원자료를 읽으므로, 먼저 릴리즈 자산(`results-<회차>.tar.gz`, 체크섬 `SHA256SUMS.txt`)을 `results/<회차>/`에 풉니다. `boundary_model.py`와 `decisive_ci.py`는 커밋된 `safe_runs.csv`와 `per_request.json.gz`만으로 돕니다.
 
 ```
-python3 harness/aggregate.py results/ -o results/all_runs.csv                 # 모든 런, 기본값이 보고서의 SLO
-python3 harness/safe_runs.py results/all_runs.csv -o results/safe_runs.csv   # 감사: 안전 / 주의 / 제외
-uv run --with numpy python3 harness/boundary_model.py --json paper/figures_v4/boundary.json   # 6절 모델, 표 3
-uv run --with matplotlib python3 harness/make_figures_v4.py                   # 그림 → paper/figures_v4 (boundary_model.py 뒤에)
-python3 harness/decisive_ci.py --tex                                           # 부록 F
-python3 harness/chunk31_buckets.py                                             # 4.2절, 31B 프롬프트 길이 구간
-cd paper/en && tectonic main.tex                                               # PDF
+python3 analysis/aggregate.py results/ -o results/all_runs.csv                 # 모든 런, 기본값이 보고서의 SLO
+python3 analysis/safe_runs.py results/all_runs.csv -o results/safe_runs.csv   # 감사: 안전 / 주의 / 제외
+uv run --with numpy python3 analysis/boundary_model.py --json paper/figures/boundary.json   # 6절 모델, 표 3
+uv run --with matplotlib python3 analysis/make_figures.py                   # 그림 → paper/figures (boundary_model.py 뒤에)
+python3 analysis/decisive_ci.py --tex                                           # 부록 F
+python3 analysis/chunk31_buckets.py                                             # 4.2절, 31B 프롬프트 길이 구간
+cd paper/en && tectonic main.tex && cp main.pdf ../main.pdf                     # PDF
 ```
 
 `results/per_request.json.gz`는 `safe_runs.csv`와 어긋나면 자동으로 다시 만들어집니다(`--rebuild`로 강제). 분석 스크립트는 커밋된 CSV와 `figures.json`을 바이트 단위로 똑같이 다시 만듭니다.

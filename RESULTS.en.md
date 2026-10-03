@@ -32,7 +32,7 @@ One section per measurement round, in the order the rounds were run. Round codes
 
 ## Predictions for the last round (E9), translated
 
-Committed at 13:29 UTC on 30 September 2026, 46 minutes before the round started. The run scripts (`configs/run_E9.sh`, `configs/lib_E9.sh`) were committed with them and did not change afterwards. The verdict rule is the strict per-request SLO used since E5 (TTFT at most 1 s, longest gap at most 50 ms, one-token outputs pass the gap criterion); 30 ms verdicts are recomputed from per-request data.
+Committed at 13:29 UTC on 30 September 2026, 46 minutes before the round started. The run scripts (`configs/rounds/E9/run_E9.sh`, `configs/rounds/E9/lib_E9.sh`) were committed with them and did not change afterwards. The verdict rule is the strict per-request SLO used since E5 (TTFT at most 1 s, longest gap at most 50 ms, one-token outputs pass the gap criterion); 30 ms verdicts are recomputed from per-request data.
 
 1. 26B NVFP4 replicas, 512-token chunk: median longest gap 15–25 ms at 1–2 requests/s per GPU; median TTFT 40–80 ms above the 1,024-token chunk (161 ms); passes the 30 ms limit at 2 requests/s per GPU or more, which overturns the "only disaggregation at 30 ms" cells for 26B; supported load at 50 ms is 3–4 per GPU (not above 1,024 tokens, since a smaller chunk lowers prefill throughput).
 2. 26B, 1,024-token chunk with the proxy cap removed: 4 requests/s per GPU at or above 0.9 in all three repeats; 5 passes (at or above 0.9); 6 fails (gap or TTFT).

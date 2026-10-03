@@ -4,7 +4,7 @@ Measurements and a calibrated model: chunked prefill vs. prefill–decode (P/D) 
 
 *한국어: [README.ko.md](README.ko.md)*
 
-Technical report: [doi:10.5281/zenodo.23085600](https://doi.org/10.5281/zenodo.23085600) · [PDF](paper/en/main.pdf) · [LaTeX](paper/en/) · Code and data: [doi:10.5281/zenodo.23085749](https://doi.org/10.5281/zenodo.23085749)
+Technical report: [doi:10.5281/zenodo.23085600](https://doi.org/10.5281/zenodo.23085600) · [PDF](paper/main.pdf) · [LaTeX](paper/en/) · Code and data: [doi:10.5281/zenodo.23085749](https://doi.org/10.5281/zenodo.23085749)
 
 ## TL;DR
 
@@ -13,9 +13,9 @@ Technical report: [doi:10.5281/zenodo.23085600](https://doi.org/10.5281/zenodo.2
 - **Disaggregation's extra time to first token was mostly the KV transfer.** Raising UCX's TCP segment size from 8 KB to 256 KB made the transfer 3.4× faster at low load; after that, the cloud's per-flow cap and NIXL's four-way split set the rate.
 - **Where chunking runs out is a matter of input length.** A step-time model calibrated on the runs predicts that, at low load and a 50 ms gap limit, inputs of roughly 14K–37K tokens (lower edge 11K–34K within the model's uncertainty) need so many chunks that 1P1D over TCP meets TTFT limits of a second or more that no chunk meets, provided the KV cache is small (hybrid attention). This is a prediction, not a measurement.
 
-![Strict-SLO attainment against load: tuned-chunk replicas vs 1P1D](paper/figures_v4/png/fig5_head_to_head.png)
+![Strict-SLO attainment against load: tuned-chunk replicas vs 1P1D](paper/figures/png/fig5_head_to_head.png)
 
-![Model prediction: lowest TTFT limit each side can meet by input length](paper/figures_v4/png/fig7_boundary.png)
+![Model prediction: lowest TTFT limit each side can meet by input length](paper/figures/png/fig7_boundary.png)
 
 ## A procedure for small-GPU fleets over TCP (Section 7.1 of the report)
 
@@ -36,30 +36,34 @@ Technical report: [doi:10.5281/zenodo.23085600](https://doi.org/10.5281/zenodo.2
 ## Repository layout
 
 ```
-harness/    measurement harness and analysis: aggregate.py, safe_runs.py, slo_sensitivity.py,
-            decisive_ci.py, boundary_model.py, make_figures_v4.py, proxies (rr_proxy.py, pd_proxy.py)
-configs/    vllm serve flag sets, per-round run scripts and runbooks (Korean originals, English in *.en.md)
+analysis/   post-hoc analysis: aggregate.py (per-run metrics), safe_runs.py (audit labels), slo_sensitivity.py,
+            decisive_ci.py (Appendix F), boundary_model.py (Section 6), make_figures.py (+ fig_*.py), chunk31_buckets.py
+harness/    measurement-time scripts run on the nodes: serve.sh, serve_pair.sh, run_bench.sh, sweep_ladder.sh,
+            proxies (rr_proxy.py, pd_proxy.py, toy_proxy_instr.py), collectors (node_collect.sh, ss_sample.sh)
+configs/    common/ vllm flag sets and model table; rounds/<round>/ run scripts and runbooks per measurement round
+            (README.md English, README.ko.md Korean original; E9 scripts are byte-identical to the pre-registered commit)
 infra/      Terraform for GPU nodes, client node, placement group (set ALLOWED_SSH_CIDR before infra/up.sh)
 results/    all_runs.csv (455 runs), safe_runs.csv (audit labels), per_request.json.gz (per-request timings)
             raw per-run folders are in the release assets and on Zenodo, one tar.gz per measurement round
             (generated text is removed from every run in the public copies; output lengths and all timings are complete)
-paper/      en/ LaTeX source and PDF, ko/ Korean rendering, figures_v4/, reviews/ (four rounds of mock review)
+paper/      main.pdf and en/ LaTeX source, ko/ Korean rendering, figures/, reviews/ (four rounds of mock review),
+            tools/ (LaTeX to markdown, reading pages)
 RESULTS.md  lab notebook (Korean), including the predictions committed before the last round; RESULTS.en.md is an English guide
 PROTOCOL.md pre-registered protocol v1.7 (Korean, committed before the first run); PROTOCOL.en.md is a translation made afterwards
 ```
 
 ## Reproduce the report's numbers and figures
 
-`aggregate.py`, `safe_runs.py`, `chunk31_buckets.py`, and `make_figures_v4.py` (transfer logs and socket samples under `results/E8/` and `results/E9/`) read the raw per-run folders, so unpack the release assets (`results-<round>.tar.gz`, checksums in `SHA256SUMS.txt`) into `results/<round>/` first; `boundary_model.py` and `decisive_ci.py` run from the committed `safe_runs.csv` and `per_request.json.gz` alone:
+`aggregate.py`, `safe_runs.py`, `chunk31_buckets.py`, and `make_figures.py` (transfer logs and socket samples under `results/E8/` and `results/E9/`) read the raw per-run folders, so unpack the release assets (`results-<round>.tar.gz`, checksums in `SHA256SUMS.txt`) into `results/<round>/` first; `boundary_model.py` and `decisive_ci.py` run from the committed `safe_runs.csv` and `per_request.json.gz` alone:
 
 ```
-python3 harness/aggregate.py results/ -o results/all_runs.csv                 # every run, report SLOs by default
-python3 harness/safe_runs.py results/all_runs.csv -o results/safe_runs.csv   # audit: safe / caution / excluded
-uv run --with numpy python3 harness/boundary_model.py --json paper/figures_v4/boundary.json   # Section 6 model, Table 3
-uv run --with matplotlib python3 harness/make_figures_v4.py                   # figures -> paper/figures_v4 (after boundary_model.py)
-python3 harness/decisive_ci.py --tex                                           # Appendix F
-python3 harness/chunk31_buckets.py                                             # Section 4.2, 31B prompt-length buckets
-cd paper/en && tectonic main.tex                                               # PDF
+python3 analysis/aggregate.py results/ -o results/all_runs.csv                 # every run, report SLOs by default
+python3 analysis/safe_runs.py results/all_runs.csv -o results/safe_runs.csv   # audit: safe / caution / excluded
+uv run --with numpy python3 analysis/boundary_model.py --json paper/figures/boundary.json   # Section 6 model, Table 3
+uv run --with matplotlib python3 analysis/make_figures.py                   # figures -> paper/figures (after boundary_model.py)
+python3 analysis/decisive_ci.py --tex                                           # Appendix F
+python3 analysis/chunk31_buckets.py                                             # Section 4.2, 31B prompt-length buckets
+cd paper/en && tectonic main.tex && cp main.pdf ../main.pdf                     # PDF
 ```
 
 `results/per_request.json.gz` is rebuilt automatically when it no longer matches `safe_runs.csv` (`--rebuild` forces it). The analysis scripts regenerate the committed CSVs and `figures.json` byte for byte.

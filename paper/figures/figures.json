@@ -1,8 +1,991 @@
 {
+ "v1_chunk_stall": {
+  "(a) 26B NVFP4, 4K input|2560": {
+   "runs": 5,
+   "maxgap_p10_p50_p90_ms": [
+    48.1,
+    48.4,
+    49.0
+   ],
+   "ttft_p50_ms": 132,
+   "attain_1s_50ms": [
+    0.944,
+    0.933,
+    0.958,
+    0.944,
+    0.95
+   ]
+  },
+  "(a) 26B NVFP4, 4K input|2048": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    52.1,
+    52.3,
+    52.6
+   ],
+   "ttft_p50_ms": 138,
+   "attain_1s_50ms": [
+    0.011
+   ]
+  },
+  "(a) 26B NVFP4, 4K input|1536": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    37.7,
+    38.8,
+    41.9
+   ],
+   "ttft_p50_ms": 145,
+   "attain_1s_50ms": [
+    1.0
+   ]
+  },
+  "(a) 26B NVFP4, 4K input|1024": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    26.8,
+    27.6,
+    31.7
+   ],
+   "ttft_p50_ms": 161,
+   "attain_1s_50ms": [
+    1.0
+   ]
+  },
+  "(a) 26B NVFP4, 4K input|512": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    21.0,
+    21.4,
+    23.4
+   ],
+   "ttft_p50_ms": 205,
+   "attain_1s_50ms": [
+    1.0
+   ]
+  },
+  "(b) 26B FP8, 4K input|2560": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    9.7,
+    62.2,
+    62.9
+   ],
+   "ttft_p50_ms": 157,
+   "attain_1s_50ms": [
+    0.133
+   ]
+  },
+  "(b) 26B FP8, 4K input|1024": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    9.4,
+    43.2,
+    43.6
+   ],
+   "ttft_p50_ms": 194,
+   "attain_1s_50ms": [
+    0.994
+   ]
+  },
+  "(b) 26B FP8, 4K input|512": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    10.6,
+    26.8,
+    27.2
+   ],
+   "ttft_p50_ms": 239,
+   "attain_1s_50ms": [
+    1.0
+   ]
+  },
+  "(c) 31B NVFP4, ShareGPT chat|2560": {
+   "runs": 5,
+   "maxgap_p10_p50_p90_ms": [
+    25.9,
+    51.5,
+    74.3
+   ],
+   "ttft_p50_ms": 79,
+   "attain_1s_50ms": [
+    0.458,
+    0.458,
+    0.514,
+    0.45,
+    0.458
+   ]
+  },
+  "(c) 31B NVFP4, ShareGPT chat|512": {
+   "runs": 1,
+   "maxgap_p10_p50_p90_ms": [
+    25.6,
+    51.5,
+    55.5
+   ],
+   "ttft_p50_ms": 79,
+   "attain_1s_50ms": [
+    0.442
+   ]
+  },
+  "(c) 31B NVFP4, ShareGPT chat|256": {
+   "runs": 2,
+   "maxgap_p10_p50_p90_ms": [
+    25.7,
+    34.1,
+    36.4
+   ],
+   "ttft_p50_ms": 79,
+   "attain_1s_50ms": [
+    1.0,
+    1.0
+   ]
+  }
+ },
+ "v1_head_to_head": {
+  "26b_4k": {
+   "Replicas chunk 2560": {
+    "0.5": [
+     1.0,
+     0.972
+    ],
+    "1": [
+     0.944,
+     0.933,
+     0.958,
+     0.944,
+     0.95
+    ],
+    "2": [
+     0.369,
+     0.644,
+     0.607,
+     0.478,
+     0.597
+    ]
+   },
+   "Replicas chunk 1024": {
+    "1": [
+     1.0
+    ],
+    "2": [
+     1.0,
+     1.0
+    ],
+    "3": [
+     1.0,
+     1.0
+    ],
+    "4": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "5": [
+     0.999,
+     1.0
+    ],
+    "6": [
+     0.189
+    ]
+   },
+   "Replicas chunk 512": {
+    "1": [
+     1.0
+    ],
+    "2": [
+     1.0,
+     1.0
+    ],
+    "3": [
+     1.0
+    ],
+    "4": [
+     0.985
+    ]
+   },
+   "1P1D test proxy": {
+    "0.25": [
+     1.0
+    ],
+    "0.5": [
+     1.0,
+     1.0
+    ],
+    "1": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "2": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "3": [
+     1.0,
+     0.956
+    ],
+    "4": [
+     0.836,
+     0.9,
+     0.975,
+     0.767
+    ],
+    "6": [
+     0.008
+    ]
+   },
+   "1P1D aiohttp proxy": {
+    "0.25": [
+     1.0
+    ],
+    "3": [
+     1.0
+    ],
+    "4": [
+     0.954,
+     0.992,
+     0.885
+    ],
+    "5": [
+     0.176
+    ]
+   },
+   "1P1D aiohttp, prefill chunk 8192 (UCX segment only)": {
+    "4": [
+     0.874,
+     0.976
+    ],
+    "5": [
+     0.366
+    ]
+   }
+  },
+  "26f_4k": {
+   "Replicas chunk 2560": {
+    "0.5": [
+     0.133
+    ],
+    "1": [
+     0.011
+    ]
+   },
+   "Replicas chunk 1024": {
+    "0.5": [
+     0.994
+    ],
+    "1": [
+     1.0
+    ]
+   },
+   "Replicas chunk 512": {
+    "0.5": [
+     1.0
+    ],
+    "1": [
+     1.0
+    ]
+   },
+   "1P1D test proxy": {
+    "0.5": [
+     1.0
+    ],
+    "1": [
+     1.0
+    ]
+   }
+  },
+  "31b_chat": {
+   "Replicas chunk 2560": {
+    "1": [
+     0.458,
+     0.458,
+     0.514,
+     0.45,
+     0.458
+    ],
+    "2": [
+     0.315
+    ],
+    "4": [
+     0.205
+    ]
+   },
+   "Replicas chunk 256": {
+    "1": [
+     1.0,
+     1.0
+    ],
+    "2": [
+     1.0
+    ],
+    "4": [
+     1.0
+    ],
+    "8": [
+     1.0
+    ]
+   },
+   "1P1D test proxy": {
+    "1": [
+     0.964
+    ],
+    "2": [
+     1.0
+    ],
+    "4": [
+     0.963,
+     0.933,
+     0.958,
+     0.885
+    ]
+   },
+   "1P1D aiohttp proxy": {
+    "4": [
+     0.924,
+     0.903,
+     1.0
+    ],
+    "6": [
+     0.765
+    ]
+   }
+  }
+ },
+ "v1_transfer": {
+  "iperf_flows_gbps": {
+   "1": 9.54,
+   "2": 19.06,
+   "4": 38.11,
+   "8": 49.72
+  },
+  "quoted_iperf": "RESULTS.md E4-0",
+  "transfer_gbps|UCX default": {
+   "n_windows": 20,
+   "median": 4.45,
+   "min": 2.48,
+   "max": 4.61
+  },
+  "transfer_gbps|Segment 256 KB only": {
+   "n_windows": 21,
+   "median": 14.97,
+   "min": 12.68,
+   "max": 16.14
+  },
+  "transfer_gbps|Seven UCX variables": {
+   "n_windows": 21,
+   "median": 14.16,
+   "min": 12.7,
+   "max": 14.86
+  },
+  "active_connections_share": {
+   "26B": {
+    "1": 0.09580838323353294,
+    "2": 0.5149700598802395,
+    "3": 0.38323353293413176,
+    "4": 0.005988023952095809
+   },
+   "31B": {
+    "1": 0.06269592476489028,
+    "2": 0.09090909090909091,
+    "3": 0.21003134796238246,
+    "4": 0.6363636363636364
+   },
+   "definition": "socket samples ~0.12 s apart; connections that moved >64 KiB; samples with any movement; shared fifth connection not counted"
+  }
+ },
+ "v1_ttft": {
+  "quoted": "RESULTS.md E4-1 (row 1, two days joined), E5 formula check (rows 2-3)",
+  "items": [
+   [
+    "26B FP8 · 4K · 0.25 req/s/GPU",
+    158,
+    165,
+    28,
+    null
+   ],
+   [
+    "26B NVFP4 · 4K · 0.5 req/s/GPU",
+    130,
+    84,
+    53,
+    235
+   ],
+   [
+    "31B NVFP4 · 4K · 0.125 req/s/GPU",
+    483,
+    283,
+    87,
+    820
+   ]
+  ]
+ },
+ "v1_who_wins": {
+  "Replicas at chunk 2560|26b_4k_tuned": [
+   [
+    "neither",
+    "neither",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ]
+  ],
+  "Replicas at chunk 2560|26f_4k_tuned": [
+   [
+    "neither",
+    "neither",
+    "neither",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "d_only",
+    "d_only",
+    "d_only",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ]
+  ],
+  "Replicas at chunk 2560|31b_chat_tuned": [
+   [
+    "neither",
+    "neither",
+    "neither",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "d_only",
+    "d_only",
+    "d_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ]
+  ],
+  "Replicas at the best\nmeasured chunk|26b_4k_tuned": [
+   [
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "r_better",
+    "unknown",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "similar",
+    "similar",
+    "similar",
+    "similar"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "similar",
+    "similar",
+    "similar",
+    "similar"
+   ]
+  ],
+  "Replicas at the best\nmeasured chunk|26f_4k_tuned": [
+   [
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ]
+  ],
+  "Replicas at the best\nmeasured chunk|31b_chat_tuned": [
+   [
+    "neither",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only",
+    "r_only"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ],
+   [
+    "neither",
+    "r_better",
+    "r_better",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown",
+    "unknown"
+   ]
+  ]
+ },
+ "v1_proxy_gc": {
+  "26_1P1D_toyi": {
+   "run": "2026-09-30T011252Z_E8_26_1P1D_toyi_N0_random_r8",
+   "events_ge15": [
+    [
+     90.1,
+     74
+    ],
+    [
+     106.0,
+     106
+    ],
+    [
+     161.8,
+     87
+    ]
+   ],
+   "gen2_gc": [
+    [
+     12.6,
+     36.0
+    ],
+    [
+     90.1,
+     37.4
+    ],
+    [
+     161.8,
+     37.5
+    ]
+   ]
+  },
+  "26_1P1D_aio": {
+   "run": "2026-09-30T013404Z_E8_26_1P1D_aio_N0_random_r8",
+   "events_ge15": [
+    [
+     106.5,
+     113
+    ]
+   ],
+   "gen2_gc": []
+  }
+ },
+ "v4_boundary": {
+  "G50": {
+   "crossover_m1.5": {
+    "L": 14144,
+    "pd_ttft_s": 0.859,
+    "replica_ttft_s": 0.872,
+    "replica_chunk": 656
+   },
+   "end_L": 36736,
+   "m": 1.5
+  },
+  "G30": {
+   "crossover_m1.5": {
+    "L": 6336,
+    "pd_ttft_s": 0.424,
+    "replica_ttft_s": 0.43,
+    "replica_chunk": 448
+   },
+   "end_L": 18432,
+   "m": 1.5
+  }
+ },
  "fig01_request_vs_system": {
-  "n_runs": 166,
+  "n_runs": 215,
   "filter": "safe runs with TTFT p99 < 1 s",
-  "replica_runs_p99_under_50_but_attain_below_0.9": 18,
+  "replica_runs_p99_under_50_but_attain_below_0.9": 21,
   "pd_runs_p99_under_50_but_attain_below_0.9": 7
  },
  "fig02_bandwidth_sweep": {
@@ -32,62 +1015,6 @@
     "ttft_p50": 471,
     "attain": 1.0
    }
-  ]
- },
- "fig03_network": {
-  "quoted": "RESULTS.md E4-0, E4-2",
-  "iperf_pg": {
-   "1": 9.54,
-   "2": 19.06,
-   "4": 38.11,
-   "8": 49.72
-  },
-  "cap": [
-   4.97,
-   9.54
-  ],
-  "effective": [
-   6.55,
-   13.96
-  ],
-  "knobs": [
-   13.86,
-   14.43,
-   13.99,
-   13.58
-  ]
- },
- "fig04_ttft_decomposition": {
-  "quoted": "RESULTS.md E4-1, E5 formula check",
-  "items": [
-   [
-    "26B FP8 · 4K · 0.5 req/s\nno placement group",
-    158,
-    324,
-    0,
-    null
-   ],
-   [
-    "26B FP8 · 4K · 0.5 req/s\nplacement group",
-    158,
-    165,
-    28,
-    null
-   ],
-   [
-    "26B NVFP4 · 4K · 1 req/s\nplacement group",
-    130,
-    84,
-    53,
-    235
-   ],
-   [
-    "31B NVFP4 · 4K · 0.25 req/s\nplacement group",
-    483,
-    283,
-    87,
-    820
-   ]
   ]
  },
  "fig05_input_length": {
@@ -155,7 +1082,7 @@
     "per_gpu": 1.0,
     "n": 1,
     "attain": [
-     0.917
+     0.972
     ]
    },
    {
@@ -163,7 +1090,7 @@
     "per_gpu": 4.0,
     "n": 1,
     "attain": [
-     0.347
+     0.372
     ]
    },
    {
@@ -171,7 +1098,7 @@
     "per_gpu": 8.0,
     "n": 1,
     "attain": [
-     0.071
+     0.092
     ]
    },
    {
@@ -179,7 +1106,7 @@
     "per_gpu": 12.0,
     "n": 1,
     "attain": [
-     0.006
+     0.019
     ]
    },
    {
@@ -187,7 +1114,7 @@
     "per_gpu": 16.0,
     "n": 1,
     "attain": [
-     0.003
+     0.007
     ]
    }
   ],
@@ -197,7 +1124,7 @@
     "per_gpu": 1.0,
     "n": 1,
     "attain": [
-     0.978
+     1.0
     ]
    },
    {
@@ -205,7 +1132,7 @@
     "per_gpu": 4.0,
     "n": 1,
     "attain": [
-     0.976
+     0.999
     ]
    },
    {
@@ -213,7 +1140,7 @@
     "per_gpu": 8.0,
     "n": 1,
     "attain": [
-     0.982
+     1.0
     ]
    },
    {
@@ -221,7 +1148,7 @@
     "per_gpu": 12.0,
     "n": 1,
     "attain": [
-     0.978
+     1.0
     ]
    },
    {
@@ -229,7 +1156,7 @@
     "per_gpu": 16.0,
     "n": 1,
     "attain": [
-     0.972
+     1.0
     ]
    },
    {
@@ -237,7 +1164,7 @@
     "per_gpu": 24.0,
     "n": 1,
     "attain": [
-     0.395
+     0.42
     ]
    },
    {
@@ -245,7 +1172,7 @@
     "per_gpu": 32.0,
     "n": 1,
     "attain": [
-     0.08
+     0.092
     ]
    }
   ],
@@ -255,7 +1182,7 @@
     "per_gpu": 1.0,
     "n": 1,
     "attain": [
-     0.956
+     0.983
     ]
    },
    {
@@ -263,7 +1190,7 @@
     "per_gpu": 4.0,
     "n": 1,
     "attain": [
-     0.969
+     0.999
     ]
    },
    {
@@ -271,7 +1198,7 @@
     "per_gpu": 8.0,
     "n": 1,
     "attain": [
-     0.984
+     1.0
     ]
    },
    {
@@ -279,7 +1206,7 @@
     "per_gpu": 12.0,
     "n": 1,
     "attain": [
-     0.975
+     1.0
     ]
    }
   ],
@@ -289,9 +1216,9 @@
     "per_gpu": 16.0,
     "n": 3,
     "attain": [
-     0.933,
-     0.953,
-     0.949
+     0.958,
+     0.975,
+     0.975
     ]
    },
    {
@@ -299,7 +1226,7 @@
     "per_gpu": 20.0,
     "n": 1,
     "attain": [
-     0.779
+     0.802
     ]
    },
    {
@@ -307,7 +1234,7 @@
     "per_gpu": 24.0,
     "n": 1,
     "attain": [
-     0.248
+     0.26
     ]
    }
   ]
@@ -352,10 +1279,10 @@
     "per_gpu": 8.0,
     "n": 4,
     "attain": [
-     0.968,
-     0.974,
-     0.981,
-     0.98
+     0.997,
+     1.0,
+     1.0,
+     1.0
     ]
    },
    {
@@ -363,7 +1290,7 @@
     "per_gpu": 16.0,
     "n": 1,
     "attain": [
-     0.953
+     0.975
     ]
    }
   ],
@@ -402,7 +1329,7 @@
     "per_gpu": 8.0,
     "n": 1,
     "attain": [
-     0.978
+     0.999
     ]
    },
    {
@@ -410,7 +1337,7 @@
     "per_gpu": 16.0,
     "n": 1,
     "attain": [
-     0.75
+     0.768
     ]
    }
   ],
@@ -477,10 +1404,10 @@
     "per_gpu": 8.0,
     "n": 4,
     "attain": [
-     0.972,
-     0.98,
-     0.976,
-     0.976
+     0.995,
+     1.0,
+     1.0,
+     1.0
     ]
    },
    {
@@ -488,7 +1415,7 @@
     "per_gpu": 16.0,
     "n": 1,
     "attain": [
-     0.841
+     0.868
     ]
    }
   ],
@@ -551,7 +1478,7 @@
     "per_gpu": 8.0,
     "n": 1,
     "attain": [
-     0.979
+     1.0
     ]
    },
    {
@@ -559,7 +1486,7 @@
     "per_gpu": 16.0,
     "n": 1,
     "attain": [
-     0.747
+     0.772
     ]
    }
   ],
@@ -622,7 +1549,7 @@
     "per_gpu": 8.0,
     "n": 1,
     "attain": [
-     0.904
+     0.928
     ]
    },
    {
@@ -630,7 +1557,7 @@
     "per_gpu": 16.0,
     "n": 1,
     "attain": [
-     0.06
+     0.062
     ]
    }
   ]
@@ -642,10 +1569,10 @@
     "per_gpu": 1.0,
     "n": 4,
     "attain": [
-     0.439,
-     0.447,
-     0.489,
-     0.431
+     0.458,
+     0.458,
+     0.514,
+     0.45
     ]
    },
    {
@@ -653,7 +1580,7 @@
     "per_gpu": 2.0,
     "n": 1,
     "attain": [
-     0.306
+     0.315
     ]
    },
    {
@@ -661,7 +1588,7 @@
     "per_gpu": 4.0,
     "n": 1,
     "attain": [
-     0.179
+     0.205
     ]
    }
   ],
@@ -671,7 +1598,7 @@
     "per_gpu": 1.0,
     "n": 1,
     "attain": [
-     0.953
+     0.964
     ]
    },
    {
@@ -679,7 +1606,7 @@
     "per_gpu": 2.0,
     "n": 1,
     "attain": [
-     0.982
+     1.0
     ]
    },
    {
@@ -687,10 +1614,10 @@
     "per_gpu": 4.0,
     "n": 4,
     "attain": [
-     0.944,
-     0.91,
-     0.932,
-     0.863
+     0.963,
+     0.933,
+     0.958,
+     0.885
     ]
    }
   ],
@@ -871,20 +1798,20 @@
   {
    "point": "ShareGPT, 16 req/s",
    "precision": "NVFP4",
-   "replicas": 0.9783333333333333,
-   "pd": 0.9773333333333333
+   "replicas": 1.0,
+   "pd": 1.0
   },
   {
    "point": "ShareGPT, 16 req/s",
    "precision": "FP8",
-   "replicas": 0.975,
-   "pd": 0.957
+   "replicas": 1.0,
+   "pd": 0.985
   },
   {
    "point": "ShareGPT, 16 req/s",
    "precision": "BF16",
-   "replicas": 0.356,
-   "pd": 0.665
+   "replicas": 0.389,
+   "pd": 0.692
   }
  ],
  "fig11_trace": [
@@ -987,68 +1914,6 @@
    ]
   }
  ],
- "fig12_cost": [
-  {
-   "group": "26B · 4K 2 nodes",
-   "replicas": {
-    "config": "26_B2",
-    "rate": 2.0,
-    "cost_per_1M": 1.977,
-    "n": 4
-   },
-   "pd": {
-    "config": "26_1P1D",
-    "rate": 6.0,
-    "cost_per_1M": 0.631,
-    "n": 1
-   }
-  },
-  {
-   "group": "26B · 4K 3 nodes",
-   "replicas": {
-    "config": "26_B3",
-    "rate": 3.0,
-    "cost_per_1M": 1.89,
-    "n": 4
-   },
-   "pd": {
-    "config": "26_1P2D",
-    "rate": 9.0,
-    "cost_per_1M": 0.694,
-    "n": 1
-   }
-  },
-  {
-   "group": "26B · chat 2 nodes",
-   "replicas": {
-    "config": "26_B2",
-    "rate": 16.0,
-    "cost_per_1M": 0.63,
-    "n": 4
-   },
-   "pd": {
-    "config": "26_1P1D",
-    "rate": 16.0,
-    "cost_per_1M": 0.631,
-    "n": 4
-   }
-  },
-  {
-   "group": "31B · chat 2 nodes",
-   "replicas": null,
-   "pd": {
-    "config": "31_1P1D",
-    "rate": 4.0,
-    "cost_per_1M": 2.58,
-    "n": 1
-   }
-  },
-  {
-   "group": "31B · 4K 2 nodes",
-   "replicas": null,
-   "pd": null
-  }
- ],
  "fig13_repeatability": [
   {
    "point": [
@@ -1057,11 +1922,11 @@
     "2"
    ],
    "e7": [
-    0.447,
-    0.489,
-    0.431
+    0.458,
+    0.514,
+    0.45
    ],
-   "e5": 0.439
+   "e5": 0.458
   },
   {
    "point": [
@@ -1109,11 +1974,11 @@
     "8"
    ],
    "e7": [
-    0.91,
-    0.932,
-    0.863
+    0.933,
+    0.958,
+    0.885
    ],
-   "e5": 0.944
+   "e5": 0.963
   },
   {
    "point": [
@@ -1135,37 +2000,11 @@
     "16"
    ],
    "e7": [
-    0.933,
-    0.953,
-    0.949
+    0.958,
+    0.975,
+    0.975
    ],
    "e5": null
-  },
-  {
-   "point": [
-    "26_1P1D",
-    "sharegpt",
-    "16"
-   ],
-   "e7": [
-    0.98,
-    0.976,
-    0.976
-   ],
-   "e5": 0.972
-  },
-  {
-   "point": [
-    "26_B2",
-    "sharegpt",
-    "16"
-   ],
-   "e7": [
-    0.974,
-    0.981,
-    0.98
-   ],
-   "e5": 0.968
   },
   {
    "point": [
@@ -1208,6 +2047,19 @@
   },
   {
    "point": [
+    "26_B2",
+    "sharegpt",
+    "16"
+   ],
+   "e7": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "e5": 0.997
+  },
+  {
+   "point": [
     "26_1P1D",
     "random",
     "2"
@@ -1231,6 +2083,19 @@
     1.0
    ],
    "e5": 1.0
+  },
+  {
+   "point": [
+    "26_1P1D",
+    "sharegpt",
+    "16"
+   ],
+   "e7": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "e5": 0.995
   }
  ],
  "fig14_push_vs_pull": [

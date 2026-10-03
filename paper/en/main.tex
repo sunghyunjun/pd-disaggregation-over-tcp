@@ -16,7 +16,7 @@
 \usepackage{float}
 \usepackage[section]{placeins}
 \setlist{itemsep=2pt,topsep=4pt}
-\graphicspath{{../figures_v4/}}
+\graphicspath{{../figures/}}
 \newcommand{\todo}[1]{\textcolor{orange}{[#1]}}
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
 
@@ -280,7 +280,7 @@ Point & Quantity & Measured & Model & Role \\
 26B NVFP4, g7, 1P1D decode node, 32K & longest gap (p90) & 43.3 & 43.3 & extrapolation check \\
 \bottomrule
 \end{tabularx}
-\caption{Step-time model against measurements, in ms (low load, 0.125--0.5 requests/s per GPU); percentages are model errors. For 1P1D the model uses Eq.~\eqref{eq:ttft} with the runs' 2,560-token prefill chunk, $m = 1.5$, and the measured per-flow cap (9.54~Gbps in a placement group, 4.97~Gbps outside); the 28~ms residual and $m = 1.5$ come from the first 4K placement-group run, so that check repeats its configuration. The g7 rows solve a two-parameter version (a per-chunk cost proportional to the chunk size, and $b$) exactly on the 4K and 16K gaps. Script: \texttt{harness/boundary\_model.py}.}
+\caption{Step-time model against measurements, in ms (low load, 0.125--0.5 requests/s per GPU); percentages are model errors. For 1P1D the model uses Eq.~\eqref{eq:ttft} with the runs' 2,560-token prefill chunk, $m = 1.5$, and the measured per-flow cap (9.54~Gbps in a placement group, 4.97~Gbps outside); the 28~ms residual and $m = 1.5$ come from the first 4K placement-group run, so that check repeats its configuration. The g7 rows solve a two-parameter version (a per-chunk cost proportional to the chunk size, and $b$) exactly on the 4K and 16K gaps. Script: \texttt{analysis/boundary\_model.py}.}
 \label{tab:model}
 \end{table}
 
@@ -531,7 +531,7 @@ Point (sessions) & per GPU & gap limit & runs & attainment (each run), 95\% inte
 31B chat, 1P1D aiohttp (E9) & 6 & 50~ms & 1 & 0.765; 0.666--0.855 \\
 \bottomrule
 \end{tabularx}
-\caption{Attainment with TTFT $\le$1~s and the listed gap limit at the points that decide the comparisons, with 95\% intervals from a hierarchical bootstrap (resample runs, then 20 time blocks within each run). Runs are listed in repeat order. Intervals are for the attainment pooled across repeats; the verdict uses the minimum over repeats. Rows with one run have within-run intervals only, and 1.000--1.000 means no failure was observed, not certainty. With two to five repeats the intervals are descriptive. The 26B test-proxy row at 4 requests/s per GPU contains two runs with seed 8007 (E7 and E8). Script: \texttt{harness/decisive\_ci.py}.}
+\caption{Attainment with TTFT $\le$1~s and the listed gap limit at the points that decide the comparisons, with 95\% intervals from a hierarchical bootstrap (resample runs, then 20 time blocks within each run). Runs are listed in repeat order. Intervals are for the attainment pooled across repeats; the verdict uses the minimum over repeats. Rows with one run have within-run intervals only, and 1.000--1.000 means no failure was observed, not certainty. With two to five repeats the intervals are descriptive. The 26B test-proxy row at 4 requests/s per GPU contains two runs with seed 8007 (E7 and E8). Script: \texttt{analysis/decisive\_ci.py}.}
 \label{tab:ci}
 \end{table}
 
