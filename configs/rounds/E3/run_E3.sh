@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# 세션 E3 · g6e(L40S) 쌍에서 분리, 모델은 26B-A4B FP8만
-# 주제: 튜닝 전송(7~8.5 Gbps)이 g6e의 네트워크 기준선 5 Gbps를 넘어선다 → 크레딧 소진 후 무슨 일이 생기는가
-# 방법론: 캐시 리셋(RESET_URLS) + 지점마다 시드 변경 + 수집기 검증 후 시작
+# Round E3 · disaggregation on a g6e (L40S) pair, model 26B-A4B FP8 only
+# Topic: the tuned transfer (7~8.5 Gbps) exceeds the g6e network baseline of 5 Gbps, so what happens once the credits are drained
+# Method: cache reset (RESET_URLS) + a different seed per point + start only after the collectors are verified
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 : "${A_PRIV:?}" "${B_PRIV:?}"
@@ -32,23 +32,23 @@ serve_p1(){ pkill -f "rr_proxy|toy_proxy" 2>/dev/null; sleep 1
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$MAIN CHUNK=2560 PREFIX=$1
   export RESET_URLS="http://$A_PRIV:8100 http://$B_PRIV:8200"; }
 
-log "E3-0 수집기 시작·검증 (양 노드)"
+log "E3-0 start and verify collectors (both nodes)"
 for h in $A_PRIV $B_PRIV; do rsh $h "PORTS='8100 8200' harness/node_collect.sh start" | sed 's/^/    /'; done
-log "E3-0 iperf 기준선과 지속 측정 (크레딧 소진 확인: 10초 → 120초)"
-rsh $A_PRIV "for t in 10 120; do echo -n \"단일흐름 \${t}s: \"; iperf3 -c $B_PRIV -P 1 -t \$t -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'; done; echo -n '4흐름 30s: '; iperf3 -c $B_PRIV -P 4 -t 30 -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'" | sed 's/^/    /'
+log "E3-0 iperf baseline and sustained measurement (credit drain check: 10 s -> 120 s)"
+rsh $A_PRIV "for t in 10 120; do echo -n \"single flow \${t}s: \"; iperf3 -c $B_PRIV -P 1 -t \$t -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'; done; echo -n '4 flows 30s: '; iperf3 -c $B_PRIV -P 4 -t 30 -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'" | sed 's/^/    /'
 
-log "E3-1 ShareGPT 사다리 (prefix off, 지점마다 시드 변경)"
+log "E3-1 ShareGPT ladder (prefix off, different seed per point)"
 serve_b2 off && for r in 4 8 12; do SEED=$r log "  B2 r$r"; SEED=$r bench E3 B2 N0 sharegpt $r; done
 serve_p1 off && for r in 4 8 12; do log "  P1 r$r"; SEED=$r bench E3 P1tuned N0 sharegpt $r; xfer; done
 
-log "E3-2 입력 4K (분리가 이기는 구간) B2 대 P1"
+log "E3-2 input 4K (the region where disaggregation wins) B2 vs P1"
 serve_b2 off && for r in 0.5 1; do SEED=1 bench E3 B2 N0 random $r --random-input-len 4096 --random-output-len 512; done
 serve_p1 off && for r in 0.5 1; do SEED=1 bench E3 P1tuned N0 random $r --random-input-len 4096 --random-output-len 512; xfer; done
 
-log "E3-3 지속 부하로 네트워크 크레딧 소진 (4K, 0.5 req/s, 15분) — 전송 처리량이 꺾이는지"
+log "E3-3 drain network credits with sustained load (4K, 0.5 req/s, 15 min): does transfer throughput drop"
 serve_p1 off && { POINT_SEC=900 MIN_PROMPTS=400 SEED=7 bench E3 P1tuned_drain N0 random 0.5 --random-input-len 4096 --random-output-len 512; xfer
   rsh $A_PRIV "docker logs vllm 2>&1 | grep -c 'KV Transfer' || true" | sed 's/^/    /'
-  log "  소진 직후 iperf 재측정"; rsh $A_PRIV "iperf3 -c $B_PRIV -P 1 -t 20 -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'" | sed 's/^/    단일흐름 /'; }
+  log "  iperf re-measurement right after the drain"; rsh $A_PRIV "iperf3 -c $B_PRIV -P 1 -t 20 -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'" | sed 's/^/    single flow /'; }
 
 for h in $A_PRIV $B_PRIV; do rsh $h "harness/node_collect.sh stop" >/dev/null 2>&1; rsh $h "docker rm -f vllm >/dev/null 2>&1"; done
 pkill -f "rr_proxy|toy_proxy" 2>/dev/null

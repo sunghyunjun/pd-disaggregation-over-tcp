@@ -29,7 +29,7 @@ variable "gpu_profile" {
     error_message = "unknown gpu_profile"
   }
 }
-# 두 번째 GPU 노드에 다른 타입을 쓸 때만 설정 (예: g6e_2x vs g7e_2x 정면 비교). 빈 값이면 gpu_profile과 같음.
+# Set only when the second GPU node uses a different type (e.g. a head-to-head g6e_2x vs g7e_2x). Empty means the same as gpu_profile.
 variable "gpu_profile_b" {
   type    = string
   default = ""
@@ -77,7 +77,7 @@ variable "client_ami_filter" {
 }
 
 locals {
-  # 워크스페이스별로 이름 충돌을 피한다(default는 접미사 없음, 기존 상태 보존)
+  # Avoid name collisions per workspace (default has no suffix, preserving the existing state)
   ws_suffix = terraform.workspace == "default" ? "" : "-${terraform.workspace}"
 
   profiles = {

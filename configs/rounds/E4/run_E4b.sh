@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# E4b · 노브 (b) 재실행: 송신·수신 세그먼트를 함께 1 MB로.
-# E4 본편에서 송신만 1m로 올려 UCX가 거부했다("RX segment size must be >= TX segment size").
+# E4b · knob (b) rerun: TX and RX segments both set to 1 MB.
+# In the main E4 run only TX was raised to 1m and UCX rejected it ("RX segment size must be >= TX segment size").
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 : "${A_PRIV:?}" "${B_PRIV:?}"
@@ -13,7 +13,7 @@ rsh(){ ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 ubuntu@"$1" "export 
 health(){ curl -s -o /dev/null -w "%{http_code}" --max-time 10 "http://$1:$2/health"; }
 xfer(){ rsh $B_PRIV "docker logs vllm 2>&1 | grep 'KV Transfer metrics' | tail -1" | sed 's/.*KV Transfer/    xfer: KV Transfer/'; }
 
-log "E4b 서버 기동 (TX=RX=1m)"
+log "E4b server start (TX=RX=1m)"
 pkill -f "[t]oy_proxy" 2>/dev/null; sleep 1
 rsh $A_PRIV "UCX_EXTRA='$TUNED_1M' CHUNK=2560 PREFIX=off PORT=8100 GPU_UTIL=0.90 CONNECTOR=producer OWN_IP=$A_PRIV harness/serve.sh $MAIN" >/dev/null &
 rsh $B_PRIV "UCX_EXTRA='$TUNED_1M' CHUNK=2560 PREFIX=off PORT=8200 GPU_UTIL=0.90 CONNECTOR=consumer OWN_IP=$B_PRIV harness/serve.sh $MAIN" >/dev/null & wait
@@ -23,10 +23,10 @@ sleep 6; log "health A=$(health $A_PRIV 8100) B=$(health $B_PRIV 8200)"
 if [ "$(health $A_PRIV 8100)" = 200 ] && [ "$(health $B_PRIV 8200)" = 200 ]; then
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$MAIN CHUNK=2560 PREFIX=off
   export RESET_URLS="http://$A_PRIV:8100 http://$B_PRIV:8200"
-  log "E4b 4K 0.5 (노브 b, 세그먼트 1m 양방향)"
+  log "E4b 4K 0.5 (knob b, 1m segments in both directions)"
   SEED=2 bench E4 xfer_b_seg1m N0 random 0.5 --random-input-len 4096 --random-output-len 512; xfer
 else
-  log "E4b 기동 실패 — 로그 확인 필요"
+  log "E4b start failed, check the logs"
   rsh $A_PRIV "docker logs vllm 2>&1 | grep -iE 'UCX  ERROR|Failed to create' | head -5"
 fi
 pkill -f "[t]oy_proxy" 2>/dev/null

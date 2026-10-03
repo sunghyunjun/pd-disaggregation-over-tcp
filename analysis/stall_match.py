@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""세션 E8(B2): 클라이언트가 본 '전역 정지'를 프록시 계측(proxy_trace.py)과 맞춘다.
-사용: stall_match.py PROXY_TRACE.jsonl RUN_DIR [RUN_DIR ...]
-- 전역 정지: 50 ms 넘는 토큰 간격이 5 ms 안에 15개 이상 요청에서 동시에 난 순간(심사자 r2_global.py와 같은 정의)
-- 프록시 정지: 같은 시각 ±100 ms 안의 2세대 GC(>5 ms) 또는 이벤트 루프 지연(>20 ms)
-- bench.json의 start_times와 프록시의 t는 같은 머신의 perf_counter(CLOCK_MONOTONIC)라 그대로 비교된다
+"""Round E8 (step B2): match the "global stalls" seen by the client against the proxy instrumentation
+(harness/proxy_trace.py) (report Appendix B.1).
+Usage: stall_match.py PROXY_TRACE.jsonl RUN_DIR [RUN_DIR ...]
+- Global stall: a moment at which a token gap above 50 ms occurred in 15 or more requests within 5 ms (the same
+  definition as the mock reviewer's r2_global.py)
+- Proxy pause: a generation-2 GC (>5 ms) or an event-loop lag (>20 ms) within +-100 ms of that moment
+- start_times in bench.json and t in the proxy trace are both perf_counter (CLOCK_MONOTONIC) on the same machine,
+  so they compare directly
 """
 import json, os, sys
 

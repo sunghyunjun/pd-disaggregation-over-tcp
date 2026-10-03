@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 세션 E6 · 레이어별 푸시(vLLM PR #56874) 시험. g7e 쌍 + 클러스터 배치 그룹, 26B·31B NVFP4, 4K 입력.
-# 목적: 전송을 프리필 계산 뒤에 숨겨 31B 4K의 첫 토큰 꼬리를 대화 SLO(1초) 안으로 넣을 수 있는가.
-# 대조: 끌어오기(기존 튜닝 1P1D) / 푸시(v0.30.0 원본, 한 번에 WRITE) / 레이어별 푸시(PR 적용본).
-# 관문: 각 푸시 구성은 같은 프롬프트의 그리디 출력이 끌어오기와 바이트 단위로 같아야 측정한다.
+# Round E6 · layer-wise push (vLLM PR #56874) trial. g7e pair + cluster placement group, 26B and 31B NVFP4, 4K input.
+# Purpose: can hiding the transfer behind prefill compute bring the 31B 4K TTFT tail within the chat SLO (1 s).
+# Controls: pull (the existing tuned 1P1D) / push (stock v0.30.0, one WRITE at the end) / layer-wise push (with the PR applied).
+# Gate: a push configuration is measured only if its greedy output for the same prompts is byte-identical to pull.
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 ulimit -n 65536 2>/dev/null || true
@@ -34,7 +34,7 @@ serve_pull(){ CFG=$1; local M=$2; stop_all
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$M CHUNK=2560 PREFIX=off
   export RESET_URLS="http://$A_PRIV:8100 http://$B_PRIV:8200"; }
 
-# serve_push 이름 모델 stock|lw
+# serve_push NAME MODEL stock|lw
 serve_push(){ CFG=$1; local M=$2 MODE=$3 mounts="" envx=""; stop_all
   [ "$MODE" = lw ] && { mounts="$PATCH_MOUNTS"; envx="VLLM_NIXL_LAYERWISE_PUSH=1"; }
   rsh $A_PRIV "UCX_EXTRA='$TUNED' ENV_EXTRA='$envx' EXTRA_MOUNTS='$mounts' KV_CONNECTOR_NAME=NixlPushConnector KV_ENGINE_ID=$ENGINE CHUNK=2560 PREFIX=off PORT=8100 GPU_UTIL=0.90 CONNECTOR=producer OWN_IP=$A_PRIV harness/serve.sh $M" >/dev/null &
@@ -42,15 +42,15 @@ serve_push(){ CFG=$1; local M=$2 MODE=$3 mounts="" envx=""; stop_all
   setsid nohup python3 $PROXY_PUSH --model $M --prefill $A_PRIV:8100 --decode $B_PRIV:8200 --prefill-engine-id $ENGINE \
     --prefill-kv-host $A_PRIV --prefill-side-channel-port 5600 --prefill-tp-size 1 --prefill-pp-size 1 --port 8000 > results/proxy_E6_$CFG.log 2>&1 </dev/null & disown
   sleep 8; ready || return 1
-  # 실제로 어떤 코드가 돌고 있는지 서버 로그로 확인(레이어별은 PR의 INFO 한 줄이 떠야 한다)
+  # Confirm from the server log which code is actually running (layer-wise must print the PR's one INFO line)
   local on; on=$(rsh $A_PRIV "docker logs vllm 2>&1 | grep -c 'layer-wise push ENABLED'")
-  log "  [$CFG] 레이어별 푸시 로그 줄 수(P): $on"
-  if [ "$MODE" = lw ] && [ "${on:-0}" -eq 0 ]; then log "  [$CFG] 레이어별 푸시가 켜지지 않음 → 이 구성 중단"; return 1; fi
-  if [ "$MODE" = stock ] && [ "${on:-0}" -ne 0 ]; then log "  [$CFG] 원본이어야 하는데 레이어별이 켜짐 → 중단"; return 1; fi
+  log "  [$CFG] layer-wise push log lines (P): $on"
+  if [ "$MODE" = lw ] && [ "${on:-0}" -eq 0 ]; then log "  [$CFG] layer-wise push not enabled, aborting this configuration"; return 1; fi
+  if [ "$MODE" = stock ] && [ "${on:-0}" -ne 0 ]; then log "  [$CFG] should be stock but layer-wise is enabled, aborting"; return 1; fi
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$M CHUNK=2560 PREFIX=off
   export RESET_URLS="http://$A_PRIV:8100 http://$B_PRIV:8200"; }
 
-gate(){ log "  [$CFG] 정확성 관문 기록"; python3 harness/greedy_check.py run --base-url $BASE_URL --model $MODEL --sharegpt $SHAREGPT_JSON --out results/gate_E6/$CFG.json --repeat ${1:-1} 2>&1 | sed 's/^/    /'; }
+gate(){ log "  [$CFG] recording the correctness gate"; python3 harness/greedy_check.py run --base-url $BASE_URL --model $MODEL --sharegpt $SHAREGPT_JSON --out results/gate_E6/$CFG.json --repeat ${1:-1} 2>&1 | sed 's/^/    /'; }
 gate_vs(){ python3 harness/greedy_check.py compare results/gate_E6/$1.json results/gate_E6/$CFG.json 2>&1 | sed 's/^/    /'; return ${PIPESTATUS[0]}; }
 
 pt(){ local R=$1; local t0; t0=$(date -u +%s); log "  $CFG random r$R"
@@ -58,21 +58,21 @@ pt(){ local R=$1; local t0; t0=$(date -u +%s); log "  $CFG random r$R"
     | grep -E "Successful requests|Median TTFT|P90 TTFT|P99 ITL|wrote|rror" | grep -v -E "Triton|_C_AVX512" | sed 's/^/    /'
   for h in $A_PRIV $B_PRIV; do rsh $h "docker logs vllm --since $t0 2>&1 | grep 'KV Transfer metrics'" > results/xfer_E6/${CFG}_r${R}_${h##*.}.log 2>/dev/null; done; }
 
-log "E6-0 수집기와 iperf"
+log "E6-0 collectors and iperf"
 for h in $A_PRIV $B_PRIV; do rsh $h "PORTS='8100 8200' harness/node_collect.sh start" | sed 's/^/    /'; done
 setsid nohup bash -c "stdbuf -oL sar -u 1" > results/client_cpu_E6.txt 2>/dev/null </dev/null & disown
-echo "    단일 흐름 $(rsh $A_PRIV "iperf3 -c $B_PRIV -P 1 -t 5 -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'") Gbps"
+echo "    single flow $(rsh $A_PRIV "iperf3 -c $B_PRIV -P 1 -t 5 -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'") Gbps"
 
-log "E6-1 31B · 끌어오기(기준, 같은 서버 반복으로 결정성 확인)"
+log "E6-1 31B · pull (reference, determinism checked by repeating on the same server)"
 serve_pull 31_pull $M31 && { gate 2; pt 0.25; pt 0.5; pt 1; }
-log "E6-2 31B · 푸시 원본(한 번에 WRITE) — 푸시 자체의 효과를 가르는 대조"
-serve_push 31_push $M31 stock && { gate; if gate_vs 31_pull; then pt 0.25; pt 0.5; else log "  관문 불일치 → 측정 생략"; fi; }
-log "E6-3 31B · 레이어별 푸시(PR 적용본)"
-serve_push 31_lw $M31 lw && { gate; if gate_vs 31_pull; then pt 0.25; pt 0.5; pt 1; else log "  관문 불일치 → 측정 생략"; fi; }
-log "E6-4 26B · 끌어오기"
+log "E6-2 31B · stock push (one WRITE at the end), the control that isolates the effect of push itself"
+serve_push 31_push $M31 stock && { gate; if gate_vs 31_pull; then pt 0.25; pt 0.5; else log "  gate mismatch, measurement skipped"; fi; }
+log "E6-3 31B · layer-wise push (PR applied)"
+serve_push 31_lw $M31 lw && { gate; if gate_vs 31_pull; then pt 0.25; pt 0.5; pt 1; else log "  gate mismatch, measurement skipped"; fi; }
+log "E6-4 26B · pull"
 serve_pull 26_pull $M26 && { gate; pt 1; pt 2; }
-log "E6-5 26B · 레이어별 푸시"
-serve_push 26_lw $M26 lw && { gate; if gate_vs 26_pull; then pt 1; pt 2; else log "  관문 불일치 → 측정 생략"; fi; }
+log "E6-5 26B · layer-wise push"
+serve_push 26_lw $M26 lw && { gate; if gate_vs 26_pull; then pt 1; pt 2; else log "  gate mismatch, measurement skipped"; fi; }
 
 stop_all
 for h in $A_PRIV $B_PRIV; do rsh $h "harness/node_collect.sh stop" >/dev/null 2>&1; done

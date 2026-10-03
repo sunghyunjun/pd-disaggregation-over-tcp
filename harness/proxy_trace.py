@@ -1,10 +1,10 @@
-"""세션 E8(B2) 프록시 계측. 분리 구성의 '전역 정지'가 어디서 생기는지 가르기 위한 기록만 남긴다.
+"""Round E8 (B2) proxy instrumentation. Only records what is needed to tell where the 'global stall' of the disaggregated configuration originates.
 
-기록(JSON 한 줄씩, perf_counter 기준 t와 벽시계 w를 함께 적어 클라이언트 bench.json의 시각과 맞춘다):
-  gap  : 상류(디코드 서버)에서 받은 스트림 조각 사이 간격이 GAP_MS를 넘은 순간. 상류 쪽 정지의 증거
-  lag  : 이벤트 루프가 5 ms 잠들었다가 LAG_MS 넘게 늦게 깨어난 순간. 프록시 자신의 정지 증거
-  gc   : 파이썬 GC 한 번이 GC_MS를 넘게 걸린 순간(세대 포함)
-사용: 환경변수 PROXY_TRACE=경로 가 있을 때만 켜진다. 없으면 모든 함수가 아무 일도 하지 않는다.
+Records (one JSON object per line; each carries a perf_counter time t and a wall-clock time w so it can be aligned with the client's bench.json timestamps):
+  gap  : a moment when the interval between stream chunks received from upstream (the decode server) exceeded GAP_MS. Evidence of an upstream stall
+  lag  : a moment when the event loop slept for 5 ms and woke up more than LAG_MS late. Evidence of a stall in the proxy itself
+  gc   : a moment when one Python GC pass took longer than GC_MS (generation included)
+Usage: enabled only when the environment variable PROXY_TRACE=<path> is set. Without it every function is a no-op.
 """
 import asyncio, gc, json, os, time
 
@@ -56,7 +56,7 @@ def flush():
 
 
 def start():
-    """이벤트 루프 안에서 한 번 부른다(앱 시작 훅)."""
+    """Call once from inside the event loop (app startup hook)."""
     if not PATH:
         return []
     gc.callbacks.append(_gc_cb)
@@ -65,7 +65,7 @@ def start():
 
 
 class Stream:
-    """상류 스트림 한 건. with 블록 안에서 조각마다 tick()을 부른다."""
+    """One upstream stream. Call tick() for every chunk inside the with block."""
     def __init__(self, rid):
         self.rid, self.last = rid, None
 

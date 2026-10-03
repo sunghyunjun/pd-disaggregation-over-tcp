@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""all_runs.csv에서 커버리지 히트맵 표 여섯 개의 HTML을 생성한다.
-축 매핑은 이 파일 안에 명시한다. CSV의 instance_type 열은 신뢰할 수 없다
-(세션 B는 클라이언트 값이 들어가 있고 D·E 계열은 비어 있다) → stage로 매핑한다.
-사용: coverage_tables.py results/all_runs.csv > /tmp/tables.html
+"""Generate the HTML of six coverage heatmap tables from all_runs.csv (how many runs per model x instance,
+instance x configuration, configuration x workload, input length, request rate, and bandwidth setting).
+The axis mappings are spelled out in this file. The instance_type column of the CSV is not reliable (round B
+holds the client's value and the D and E rounds are empty), so the instance is mapped from the round code.
+Usage: coverage_tables.py results/all_runs.csv > /tmp/tables.html
 """
 import csv, sys, collections, json
 
-# stage → 인스턴스. 세션마다 고정이므로 표로 적는다. E1만 구성 이름으로 갈린다(혼합 쌍).
+# round code -> instance. Fixed within a round, so written as a table. Only E1 splits by configuration name (mixed pair).
 STAGE_INST = {
     "P": "g5.xlarge", "Ap": "g7e.2xlarge", "A": "g7.2xlarge", "C1": "g7e.2xlarge",
     "B": "g7.2xlarge", "D": "g7.2xlarge", "E2": "g7e.2xlarge", "E3": "g6e.2xlarge",
@@ -34,24 +35,24 @@ def instance_of(r):
     if s == "E1":
         c = r["config"]
         return "g6e.2xlarge" if c.startswith("l40s") else "g7e.2xlarge"
-    return STAGE_INST.get(s, "기타")
+    return STAGE_INST.get(s, "other")
 
-# 구성 분류. 튜닝 여부는 이름에 든 표식으로 가른다.
+# Configuration classes. Whether a disaggregated run is tuned is decided by markers in its name.
 TUNED_MARKS = ("tuned", "best", "_pg", "xfer_", "tcfix", "d1")
 def config_of(r):
     c = r["config"]; cl = c.lower()
-    if cl.startswith("b2"): return "B2 복제본"
+    if cl.startswith("b2"): return "B2 replicas"
     if cl.startswith("b1") or cl.startswith("l40s") or cl.startswith("pro6000") or cl == "dbg":
-        return "B1 단일"
+        return "B1 single"
     if cl.startswith("p1") or cl.startswith("d1") or cl.startswith("xfer"):
-        return "P1 튜닝" if any(m in cl for m in TUNED_MARKS) else "P1 분리"
-    return "기타"
-CONFIGS = ["B1 단일", "B2 복제본", "P1 분리", "P1 튜닝"]
+        return "P1 tuned" if any(m in cl for m in TUNED_MARKS) else "P1 disaggregated"
+    return "other"
+CONFIGS = ["B1 single", "B2 replicas", "P1 disaggregated", "P1 tuned"]
 
 def workload_of(r):
     w = r["workload"]
-    return {"sharegpt": "ShareGPT", "random": "합성 격자"}.get(w, "Azure 트레이스" if w.startswith("azure") else "기타")
-WORKLOADS = ["ShareGPT", "합성 격자", "Azure 트레이스"]
+    return {"sharegpt": "ShareGPT", "random": "Synthetic grid"}.get(w, "Azure trace" if w.startswith("azure") else "other")
+WORKLOADS = ["ShareGPT", "Synthetic grid", "Azure trace"]
 
 def inlen_bucket(r):
     if r["workload"] != "random": return None
@@ -70,15 +71,15 @@ def rate_of(r):
     return v if v in RATES else None
 
 
-# 대역폭 설정: network 열이 tc 값을 담고, 튜닝 세션의 tcfix_* 구성 이름에도 들어 있다.
-BWS = ["제한 없음", "tc 5 Gbps", "tc 3 Gbps", "tc 2.5 Gbps", "tc 2 Gbps", "tc 1 Gbps", "배치 그룹"]
+# Bandwidth setting: the network column carries the tc value, and the tuning round's tcfix_* configuration names carry it too.
+BWS = ["No limit", "tc 5 Gbps", "tc 3 Gbps", "tc 2.5 Gbps", "tc 2 Gbps", "tc 1 Gbps", "Placement group"]
 def bw_of(r):
     net = (r["network"] or "").lower(); c = r["config"].lower()
-    if "_pg" in c or c.startswith("xfer_"): return "배치 그룹"
+    if "_pg" in c or c.startswith("xfer_"): return "Placement group"
     for key, lab in (("5gbit", "tc 5 Gbps"), ("3gbit", "tc 3 Gbps"), ("2500mbit", "tc 2.5 Gbps"),
                      ("2gbit", "tc 2 Gbps"), ("1gbit", "tc 1 Gbps")):
         if key in net or key in c: return lab
-    return "제한 없음"
+    return "No limit"
 
 def heat_class(n):
     if n == 0: return "z"
@@ -102,7 +103,7 @@ def table(rows, corner, row_labels, row_key, col_labels, col_key):
             n = cnt[(a, b)]
             cls = heat_class(n)
             txt = str(n) if n else ""
-            out.append(f'<td class="h {cls}" title="{a} × {b}: {n}런">{txt}</td>')
+            out.append(f'<td class="h {cls}" title="{a} × {b}: {n} runs">{txt}</td>')
         out.append("</tr>")
     out.append("</tbody></table></div>")
     return "".join(out)
@@ -110,26 +111,26 @@ def table(rows, corner, row_labels, row_key, col_labels, col_key):
 def main():
     rows = list(csv.DictReader(open(sys.argv[1])))
     rows = [r for r in rows if (r.get("discarded") or "False") not in ("True", "true")]
-    model_lbl = lambda r: MODEL_LABEL.get(r["model"], "기타")
+    model_lbl = lambda r: MODEL_LABEL.get(r["model"], "other")
     print("<!-- MODEL_INSTANCE -->")
-    print(table(rows, "모델 · 정밀도 \\ 인스턴스", MODEL_ORDER, model_lbl, INSTANCES, instance_of))
+    print(table(rows, "Model · precision \\ instance", MODEL_ORDER, model_lbl, INSTANCES, instance_of))
     print("<!-- INSTANCE_CONFIG -->")
-    print(table(rows, "인스턴스 \\ 구성", INSTANCES, instance_of, CONFIGS, config_of))
+    print(table(rows, "Instance \\ configuration", INSTANCES, instance_of, CONFIGS, config_of))
     print("<!-- CONFIG_WORKLOAD -->")
-    print(table(rows, "구성 \\ 워크로드", CONFIGS, config_of, WORKLOADS, workload_of))
+    print(table(rows, "Configuration \\ workload", CONFIGS, config_of, WORKLOADS, workload_of))
     print("<!-- CONFIG_INLEN -->")
-    print(table([r for r in rows if inlen_bucket(r)], "구성 \\ 입력 길이", CONFIGS, config_of, INLENS, inlen_bucket))
+    print(table([r for r in rows if inlen_bucket(r)], "Configuration \\ input length", CONFIGS, config_of, INLENS, inlen_bucket))
     print("<!-- CONFIG_RATE -->")
-    print(table([r for r in rows if rate_of(r)], "구성 \\ 요청률 (req/s)", CONFIGS, config_of, RATES, rate_of))
-    # 요약 수치
+    print(table([r for r in rows if rate_of(r)], "Configuration \\ request rate (req/s)", CONFIGS, config_of, RATES, rate_of))
+    # summary numbers
     summary = {
-        "총런": len(rows),
-        "세션": sorted(set(r["stage"] for r in rows)),
-        "인스턴스별": collections.Counter(instance_of(r) for r in rows),
-        "구성별": collections.Counter(config_of(r) for r in rows),
+        "total_runs": len(rows),
+        "rounds": sorted(set(r["stage"] for r in rows)),
+        "by_instance": collections.Counter(instance_of(r) for r in rows),
+        "by_config": collections.Counter(config_of(r) for r in rows),
     }
     print("<!-- CONFIG_BW -->")
-    print(table(rows, "구성 \\ 대역폭 설정", CONFIGS, config_of, BWS, bw_of))
+    print(table(rows, "Configuration \\ bandwidth setting", CONFIGS, config_of, BWS, bw_of))
     print("<!-- SUMMARY " + json.dumps(summary, ensure_ascii=False, default=dict) + " -->")
 
 if __name__ == "__main__":

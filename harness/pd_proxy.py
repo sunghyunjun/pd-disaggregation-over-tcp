@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""세션 E8(B2): 분리 구성용 aiohttp 프록시. 복제본 경로(rr_proxy.py)와 같은 라이브러리로 P→D를 중계한다.
-요청 흐름은 vLLM v0.30.0 tests/v1/kv_connector/nixl_integration/toy_proxy_server.py와 같다.
-  1) 프리필 노드에 max_tokens=1, stream=False, kv_transfer_params={do_remote_decode: True}로 보낸다
-  2) 응답의 kv_transfer_params를 원래 요청에 붙여 디코드 노드로 스트리밍 요청을 보낸다
-  3) 디코드 노드의 스트림을 그대로 클라이언트에 흘린다
-프리필·디코드 노드는 각각 라운드로빈. PROXY_TRACE를 주면 harness/proxy_trace.py 계측이 켜진다.
-사용: pd_proxy.py --port 8000 --prefill http://P:8100 [...] --decode http://D:8200 [...]
+"""Round E8 (B2): aiohttp proxy for the disaggregated (1P1D) configuration. Relays P to D with the same library as the replicas path (rr_proxy.py).
+The request flow matches vLLM v0.30.0 tests/v1/kv_connector/nixl_integration/toy_proxy_server.py:
+  1) send the request to the prefill node with max_tokens=1, stream=False, kv_transfer_params={do_remote_decode: True}
+  2) attach the kv_transfer_params from that response to the original request and send a streaming request to the decode node
+  3) pass the decode node's stream through to the client unchanged
+Prefill and decode nodes are each picked round-robin. Setting PROXY_TRACE enables the harness/proxy_trace.py instrumentation.
+Usage: pd_proxy.py --port 8000 --prefill http://P:8100 [...] --decode http://D:8200 [...]
 """
 import argparse, itertools, json, os, resource, sys, uuid
 import aiohttp
@@ -30,7 +30,7 @@ def prefill_body(req):
 
 
 async def handle(req):
-    api = req.path[len("/v1"):]            # /completions 또는 /chat/completions
+    api = req.path[len("/v1"):]            # /completions or /chat/completions
     body = await req.json()
     rid = str(uuid.uuid4())
     hdr = {"Authorization": f"Bearer {os.environ.get('OPENAI_API_KEY')}", "X-Request-Id": rid}

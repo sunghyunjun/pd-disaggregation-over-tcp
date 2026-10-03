@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""collect_*_prom.tsv를 런 구간별로 요약. 마찰 #12 수정 후 수집 형식(TSV) 전용.
+"""Summarize collect_*_prom.tsv (vLLM /metrics samples) per run window. Only for the TSV collector format
+introduced after the fix for friction #12.
 
-사용: parse_prom.py results/<stage>/collect_*_prom.tsv --runs results/<stage>
-      각 런의 result.json에서 시작 시각과 duration을 읽어 구간 평균·최대와
-      접두어 캐시 적중률(구간 증분 기반)을 계산한다.
+Usage: parse_prom.py results/<round>/collect_*_prom.tsv --runs results/<round>
+       Reads each run's start time and duration from its result.json, then computes window means and maxima
+       and the prefix-cache hit rate (from the counter increments within the window).
 """
 import argparse, glob, json, os, collections, datetime, sys
 
@@ -27,7 +28,7 @@ def run_windows(root):
         try: d = json.load(open(f))
         except Exception: continue
         rid = d['meta']['run_id']
-        # run_id 형식 2026-09-26T190317Z_...
+        # run_id format: 2026-09-26T190317Z_...
         try:
             t0 = datetime.datetime.strptime(rid.split('_')[0], '%Y-%m-%dT%H%M%SZ').replace(tzinfo=datetime.timezone.utc).timestamp()
         except ValueError: continue
@@ -38,13 +39,13 @@ def run_windows(root):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('tsv', nargs='+')
-    ap.add_argument('--runs', required=True, help='런 폴더들이 있는 디렉터리')
+    ap.add_argument('--runs', required=True, help='directory that holds the per-run folders')
     a = ap.parse_args()
     per_port, errors = load_tsv(a.tsv)
-    if errors: print('스크레이프 실패 횟수:', dict(errors), file=sys.stderr)
+    if errors: print('scrape failures:', dict(errors), file=sys.stderr)
     if not per_port:
-        print('경고: 파싱된 지표가 없습니다. 수집기가 비어 있었는지 확인하세요.', file=sys.stderr); return 1
-    print(f"{'run_id':46}{'port':>5}{'running평균':>11}{'waiting평균':>12}{'KV사용률max':>12}{'선점':>6}{'접두어적중률':>13}")
+        print('warning: no metrics parsed; check whether the collector output is empty.', file=sys.stderr); return 1
+    print(f"{'run_id':46}{'port':>5}{'running_avg':>12}{'waiting_avg':>12}{'kv_use_max':>11}{'preempt':>8}{'prefix_hit':>11}")
     for rid, t0, t1 in run_windows(a.runs):
         for port, metrics in sorted(per_port.items()):
             def series(n):

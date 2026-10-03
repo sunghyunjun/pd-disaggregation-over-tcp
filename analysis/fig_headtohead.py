@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
-"""영어 원고 v3 그림(3차 모의 심사 반영). v2 스크립트의 함수를 그대로 쓰고 바뀐 그림만 다시 정의한다.
+"""Head-to-head and transfer-path figures in the form the report uses, after the third mock review. Reuses the
+functions of fig_results.py and redefines only the two figures that changed.
 
-사용:
-  uv run --with matplotlib python3 harness/make_figures_v3.py [-o paper/figures_v3]
+Library for analysis/make_figures.py, which is the entry point that writes paper/figures. Running this module
+directly draws the whole set into -o (default paper/figures_v3, kept apart so that paper/figures is not
+overwritten).
 
-v2와 다른 점
-  v1_head_to_head  판정(모든 반복 ≥0.9)을 통과하지 못한 점은 속 빈 마커, 같은 x의 계열을 조금씩 어긋나게,
-                   P 청크 8,192 계열은 다른 선 모양과 "UCX segment sizes only" 라벨, FP8 패널에 겹침 표기(A11, B15)
-  v1_transfer      (c) 제목·축 이름을 실제 지표(표본마다 64 KiB 넘게 움직인 연결 수)에 맞추고, 두 계열 모두 분리 전송이라
-                   주황 두 명도 + 빗금으로 구분, 윗제목의 요청률을 GPU당으로(A9)
-  v1_who_wins      절단 판정만 같은 서빙 구성의 프록시·세션 변형을 합친다(slo_sensitivity.FAMILIES, B6). 26B 동률 8칸이 나온다
-  부록             복제본 범례에 ", chunk 2,560", 주의 런 표시, 그림 A9 제목을 조건만(A12, A13-17)
+Differences from the fig_results.py versions
+  v1_head_to_head  points that fail the verdict rule (every repeat >=0.9) get hollow markers; series at the same x
+                   are offset slightly; the 8,192-token prefill-chunk series has its own line style and the label
+                   "UCX segment sizes only"; the FP8 panel notes the series that coincide (review items A11, B15)
+  v1_transfer      panel (c) title and axis names match the measured quantity (connections that moved more than
+                   64 KiB per sample); both series are disaggregated transfers, so they are told apart by two
+                   orange shades plus hatching; the suptitle gives request rates per GPU (A9)
+  v1_who_wins      only the censoring decision pools proxy and round variants of one serving configuration
+                   (slo_sensitivity.FAMILIES, B6), which yields eight tied cells for 26B
+  Appendix figures replica legends read ", chunk 2,560", caution runs are marked, and the title of the GPU-speed
+                   figure states only the conditions (A12, A13-17)
 """
 import argparse, json, os, sys
 from collections import defaultdict
@@ -39,7 +45,7 @@ def series(ax, cache, stages, cfgs, wl, inl, gpus, color, marker, ls, label, dx=
     ys = [sum(by[x]) / len(by[x]) for x in xs]
     ax.plot(X, ys, color=color, ls=ls, lw=1.8, label=label, marker=marker, mfc=color, mec=color, ms=5.5)
     ax.vlines(X, [min(by[x]) for x in xs], [max(by[x]) for x in xs], color=color, lw=1.1)
-    fail = [(xx, y) for xx, y, x in zip(X, ys, xs) if min(by[x]) < 0.9]   # 판정 탈락: 속 빈 마커
+    fail = [(xx, y) for xx, y, x in zip(X, ys, xs) if min(by[x]) < 0.9]   # fails the verdict rule: hollow marker
     if fail:
         ax.plot([f[0] for f in fail], [f[1] for f in fail], ls="none", marker=marker, mfc="white", mec=color, mew=1.4, ms=5.5)
     return {f"{x / gpus:g}": [round(v, 3) for v in by[x]] for x in xs}
@@ -141,7 +147,7 @@ def fig_transfer(out, root="results/E8"):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", default="results/safe_runs.csv")
-    ap.add_argument("--rebuild", action="store_true", help="요청별 캐시를 항상 다시 만든다")
+    ap.add_argument("--rebuild", action="store_true", help="always rebuild the per-request cache")
     ap.add_argument("-o", "--out", default="paper/figures_v3")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)

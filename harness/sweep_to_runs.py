@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""`vllm bench sweep serve` 출력을 기존 결과 배치(results/<RUN_ID>/{result,bench}.json)로 변환한다.
-집계 경로(aggregate.py → analyze.py → table.py)를 그대로 쓰기 위한 어댑터다.
-사용법: sweep_to_runs.py SWEEP_EXP_DIR --stage E5 --config P1tuned --workload sharegpt [--network N0] [--out results]
+"""Convert `vllm bench sweep serve` output into the existing result layout (results/<RUN_ID>/{result,bench}.json).
+An adapter so the aggregation path (analysis/aggregate.py -> analysis/analyze.py -> analysis/table.py) can be used unchanged.
+Usage: sweep_to_runs.py SWEEP_EXP_DIR --stage E5 --config P1tuned --workload sharegpt [--network N0] [--out results]
 """
 import argparse, json, os, re, shutil, sys
 from datetime import datetime, timezone
@@ -24,7 +24,7 @@ def main():
             b = json.load(open(src))
             rate = b.get("request_rate")
             rate_s = "inf" if rate in (None, float("inf")) else (f"{rate:g}")
-            # 실행 시각은 sweep이 남기지 않으므로 파일 mtime을 UTC로 쓴다
+            # sweep does not record the run time, so the file mtime in UTC is used instead
             ts = datetime.fromtimestamp(os.path.getmtime(src), timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
             run_no = fn[len("run="):-len(".json")]
             run_id = f"{ts}_{a.stage}_{a.config}_{a.network}_{a.workload}_r{rate_s}_n{run_no}"
@@ -40,8 +40,8 @@ def main():
             made += 1
             print("wrote", os.path.join(d, "result.json"))
     if made == 0:
-        print("변환할 run=*.json 이 없습니다:", a.exp_dir, file=sys.stderr); sys.exit(1)
-    print(f"{made}개 런 변환 완료")
+        print("no run=*.json to convert under:", a.exp_dir, file=sys.stderr); sys.exit(1)
+    print(f"converted {made} runs")
 
 if __name__ == "__main__":
     main()

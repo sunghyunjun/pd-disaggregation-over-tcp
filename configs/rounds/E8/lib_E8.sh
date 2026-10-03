@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# 세션 E8 공통 함수(lib_E7.sh에서 출발). 심사 대응 측정: B1 복제본 청크 스윕, B2 분리 구성 전역 정지 원인, B3 P–D 연결 수.
-# E7과 달라진 점
-#   - serve_rep가 청크 크기를 인자로 받는다(E7까지는 2560 고정). MM_LIMIT가 있으면 serve.sh로 넘긴다.
-#   - serve_pd가 프록시 종류(PROXY_KIND: toy=원본, toyi=계측 사본, aio=harness/pd_proxy.py)와 UCX 설정 묶음(UCXSET: TUNED|SEG|DEFAULT)을 고른다.
-#   - pt 앞뒤로 선택 기록: SNAP_D=1이면 디코드 노드 /metrics의 ITL 히스토그램, SS=1이면 P·D 양쪽 ss 샘플링.
-#   - att: 방금 끝난 지점의 요청별 대화 SLO 달성률(첫 토큰 ≤1 s, 요청 내 최대 간격 ≤50 ms)을 바로 계산한다.
+# Round E8 shared functions (derived from lib_E7.sh). Review-response measurements: B1 replica chunk sweep, B2 cause of the global pause in disaggregated configurations, B3 P–D connection count.
+# Changes from E7
+#   - serve_rep takes the chunk size as an argument (fixed at 2560 through E7). MM_LIMIT, if set, is passed to serve.sh.
+#   - serve_pd selects the proxy kind (PROXY_KIND: toy=vLLM's test proxy as is, toyi=instrumented copy, aio=harness/pd_proxy.py) and the UCX setting bundle (UCXSET: TUNED|SEG|DEFAULT).
+#   - Optional records around pt: SNAP_D=1 snapshots the ITL histogram from the decode node's /metrics, SS=1 samples ss on both P and D.
+#   - att: computes the per-request chat SLO attainment of the point just finished (TTFT ≤1 s, longest gap per request ≤50 ms) on the spot.
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 ulimit -n 65536 2>/dev/null || true
@@ -26,12 +26,12 @@ PREFILLERS=""; DECODERS=""; CFG=""; ALL=${ALL:-}; LAST_OUT=""
 stop_all(){ pkill -f "[r]r_proxy.py|[t]oy_proxy_server|[t]oy_proxy_instr|[p]d_proxy.py" 2>/dev/null; for h in $ALL; do rsh $h "docker rm -f vllm >/dev/null 2>&1"; done; sleep 2; }
 
 warm(){ vllm bench serve --backend vllm --base-url "$BASE_URL" --model "$MODEL" --dataset-name sharegpt --dataset-path "$SHAREGPT_JSON" \
-          --num-prompts 30 --request-rate 4 --seed 999 >/dev/null 2>&1; log "  [$CFG] 워밍업 30요청 완료"; }
+          --num-prompts 30 --request-rate 4 --seed 999 >/dev/null 2>&1; log "  [$CFG] warm-up of 30 requests done"; }
 
 # serve_rep CFG MODEL CHUNK host...
 serve_rep(){ CFG=$1; local M=$2 C=$3; shift 3; stop_all; PREFILLERS=""; DECODERS=""
-  # 청크를 2560 아래로 내릴 때만 0단계에서 찾은 MM_LIMIT·SERVE_EXTRA를 쓴다(2560 대조군은 E7과 똑같은 명령)
-  # FORCE_MM=1이면 2560에서도 같은 MM_LIMIT를 쓴다(보충 측정: 2048 이상치가 MM 설정 차이인지 확인)
+  # Use the MM_LIMIT and SERVE_EXTRA found in step 0 only when the chunk goes below 2560 (the 2560 control uses exactly the E7 command)
+  # With FORCE_MM=1 the same MM_LIMIT is used at 2560 too (supplementary check: is the 2048 outlier due to the MM setting)
   local mm="" ex=""; { [ "$C" -lt 2560 ] || [ "${FORCE_MM:-0}" = 1 ]; } && { mm=${MM_LIMIT:-}; ex=${SERVE_EXTRA:-}; }
   for h in "$@"; do rsh $h "MM_LIMIT='$mm' CHUNK=$C PREFIX=off PORT=8100 GPU_UTIL=0.90 harness/serve.sh $M $ex" | sed 's/^/    /' & done; wait
   local ups=() ok=1 hs=""; for h in "$@"; do ups+=("http://$h:8100"); done
@@ -65,7 +65,7 @@ serve_pd(){ CFG=$1; local M=$2 P="$3" D="$4"; stop_all; PREFILLERS="$P"; DECODER
 
 snap_d(){ local tag=$1; for h in $DECODERS; do curl -s --max-time 10 "http://$h:8200/metrics" | grep -E '^vllm:(inter_token_latency_seconds|time_per_output_token_seconds|request_time_per_output_token_seconds)_(bucket|count|sum)' > results/metrics_E8/${tag}_${h##*.}.txt; done; }
 
-# 한 지점: pt 워크로드 요청률 반복번호 [추가 인자]. 시드 = 지점 기본값 + 1000 × 반복번호(E5·E7과 같은 규칙이라 같은 요청률·반복이면 같은 프롬프트)
+# One point: pt WORKLOAD RATE REP [extra args]. Seed = point base + 1000 × REP (same rule as E5 and E7, so the same rate and rep give the same prompts)
 pt(){ local WL=$1 R=$2 REP=$3; shift 3; local t0; t0=$(date -u +%s); local tag=${CFG}_${WL}_r${R}_n${REP}
   local base; base=$(python3 -c "print(int(float('$R')*1000)+(7 if '$WL'=='random' else 0))")
   log "  $CFG $WL r$R #$REP"
@@ -77,9 +77,9 @@ pt(){ local WL=$1 R=$2 REP=$3; shift 3; local t0; t0=$(date -u +%s); local tag=$
   if [ "${SS:-0}" = 1 ]; then for h in $PREFILLERS $DECODERS; do rsh $h "harness/ss_sample.sh stop" >/dev/null; done; fi
   [ "${SNAP_D:-0}" = 1 ] && snap_d ${tag}_post
   for h in $DECODERS; do rsh $h "docker logs vllm --since $t0 2>&1 | grep 'KV Transfer metrics'" > results/xfer_E8/${tag}_${h##*.}.log 2>/dev/null; done
-  LAST_OUT=$(ls -td results/*_E8_${CFG}_N0_${WL}_r${R} 2>/dev/null | head -1); log "    달성률 $(att)"; }
+  LAST_OUT=$(ls -td results/*_E8_${CFG}_N0_${WL}_r${R} 2>/dev/null | head -1); log "    attainment $(att)"; }
 
-# 방금 끝난 지점의 요청별 대화 SLO 달성률(진행 판단용 즉석 값. 논문 수치는 aggregate.py로 다시 낸다)
+# Per-request chat SLO attainment of the point just finished (an on-the-spot value for deciding how to proceed; the report numbers are recomputed by aggregate.py)
 att(){ [ -n "$LAST_OUT" ] && [ -f "$LAST_OUT/bench.json" ] || { echo "?"; return; }
   python3 - "$LAST_OUT/bench.json" <<'PY'
 import json,sys

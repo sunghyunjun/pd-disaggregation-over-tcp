@@ -1,4 +1,4 @@
-*English translation of `sess_P.md`; the Korean file is the original.*
+*English translation of `README.ko.md`; the Korean file is the original. Commands below use the flat `configs/` layout of the time (see `configs/README.md`).*
 
 # Round P · Two-node plumbing (g5.xlarge ×2, 8 vCPU quota) · 1h · about $2
 
@@ -69,7 +69,7 @@ On node A:
 mkdir -p ~/.local/bin && ln -sf ~/pd/harness/vllm-docker.sh ~/.local/bin/vllm && export PATH=~/.local/bin:$PATH
 export MODEL=Qwen/Qwen3-1.7B BASE_URL=http://127.0.0.1:8000 RESULTS_DIR=/pd/results ENV_JSON=/pd/results/env_P_A.json
 cd ~/pd && harness/run_bench.sh P P1 N0 random 1 --random-input-len 1024 --random-output-len 128 --num-prompts 60
-python3 harness/analyze.py results/*_P_P1_*/bench.json
+python3 analysis/analyze.py results/*_P_P1_*/bench.json
 ```
 Pass: result.json is created, the analyze table prints, and prom.txt/sar.txt/dmon.txt are not empty. The point is whether bench serve inside the container reaches the proxy (host port 8000); it does because of --network host.
 

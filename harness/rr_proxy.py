@@ -16,14 +16,14 @@ async def handle(req):
             await resp.write(chunk)
         await resp.write_eof(); return resp
 
-# --conn-limit: 업스트림 동시 연결 상한. 기본 100은 aiohttp 기본값으로 E1~E8과 같다(2차 심사: 복제본만 100에 묶였다).
-# 세션 E9부터 0(무제한)을 넘겨 분리용 pd_proxy.py와 맞춘다.
+# --conn-limit: cap on concurrent upstream connections. The default 100 is the aiohttp default and matches E1 to E8 (second review: only the replicas were bound at 100).
+# From round E9 on, 0 (unlimited) is passed to match pd_proxy.py used for the disaggregated configuration.
 async def on_start(app): app["sess"] = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None),
                                                              connector=aiohttp.TCPConnector(limit=app["conn_limit"]))
 async def on_stop(app): await app["sess"].close()
 
 if __name__ == "__main__":
-    # 마찰 #20: 높은 요청률에서 기본 파일 한도 1,024에 걸려 500을 낸다 → 소프트 한도를 하드 한도까지 올린다
+    # friction #20: at high request rates the default file limit of 1,024 is hit and 500s are returned, so raise the soft limit up to the hard limit
     _soft, _hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     resource.setrlimit(resource.RLIMIT_NOFILE, (min(65536, _hard), _hard))
     ap = argparse.ArgumentParser(); ap.add_argument("--port", type=int, default=8000); ap.add_argument("--upstreams", nargs="+", required=True)

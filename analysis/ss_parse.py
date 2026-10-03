@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""세션 E8(B3): ss_sample.sh 출력에서 KV 전송에 쓰인 TCP 연결 수와 연결별 몫을 센다.
-사용: ss_parse.py FILE [--min-bytes 1000000]
-- 연결 = (로컬 포트, 원격 포트) 쌍. 22·5201·5600 포트는 뺀다.
-- 샘플 사이 bytes_acked(송신 쪽)·bytes_received(수신 쪽) 증가량으로 연결별 전송량을 구한다.
-- 출력: 전체 기간에 min-bytes 넘게 나른 연결 수, 연결별 총량과 비율, 동시에 바이트가 움직인 연결 수의 분포.
+"""Round E8 (step B3): count the TCP connections that carried the KV transfer, and each connection's share, from
+the output of harness/ss_sample.sh (report Section 4.3).
+Usage: ss_parse.py FILE [--min-bytes 1000000]
+- A connection is a (local port, remote port) pair. Ports 22, 5201, and 5600 are excluded.
+- Per-connection volume is the growth of bytes_acked (sending side) and bytes_received (receiving side) between samples.
+- Prints the number of connections that carried more than min-bytes over the whole file, each connection's total
+  and share, and the distribution of how many connections moved bytes in the same sample.
 """
 import re, sys, collections
 

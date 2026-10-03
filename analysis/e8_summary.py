@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""세션 E8 요약표: 런마다 대화 SLO 달성률(첫 토큰 ≤1 s, 요청 내 최대 간격 ≤50 ms), 첫 토큰 p50,
-요청별 최대 간격 p50/p90, 전역 정지 수(50 ms 넘는 간격이 5 ms 안에 15요청 이상), 정지를 뺀 달성률.
-사용: e8_summary.py [results/E8] [E8]   (출력: 마크다운 표. 두 번째 인자는 세션 이름, E9 등)
+"""Summary table of one measurement round (written for E8): per run, strict-SLO attainment (TTFT <=1 s, longest
+gap per request <=50 ms), TTFT p50, p50/p90 of the longest gap per request, the number of global stalls (a gap
+above 50 ms in 15 or more requests within 5 ms), and attainment with those stalls removed.
+Usage: e8_summary.py [results/E8] [E8]   (prints a markdown table; the second argument is the round code, e.g. E9)
 """
 import glob, json, os, re, sys
 
@@ -53,7 +54,7 @@ for d in sorted(glob.glob(os.path.join(root, f"*_{stage}_*"))):
                  q(T, .5) * 1e3, q(mx, .5) * 1e3, q(mx, .9) * 1e3, sum(1 for e in E if e), float(rate) / ngpu))
 
 rows.sort(key=lambda r: (r[0], r[1], r[2], r[3]))
-print("| 구성 | 워크로드 | 합계 req/s | GPU당 | n | 달성률 | 정지 제외 | 전역 정지 | TTFT p50 ms | 최대 간격 p50 | p90 | 오류 |")
+print("| Config | Workload | Total req/s | Per GPU | n | Attainment | Without stalls | Global stalls | TTFT p50 ms | Longest gap p50 | p90 | Errors |")
 print("|---|---|---|---|---|---|---|---|---|---|---|---|")
 for r in rows:
     cfg, wl, rate, ts, n, a, awo, g, t50, m50, m90, err, pg = r

@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""판정을 가르는 지점의 달성률과 95% 구간(계층 부트스트랩: 반복 런을 복원 추출한 뒤 각 런 안에서 시간 블록 20개를 복원 추출).
-2차 모의 심사(R2-4, 종합 심사자 A11) 대응. 3차 심사(A13-16)에서 30 ms 결정점과 3배의 근거 점을 더했다. 사용: python3 analysis/decisive_ci.py [--tex] [--rebuild]
-판정 기준: 요청별 첫 토큰 ≤ T, 요청 내 최대 간격 ≤ B(출력 1토큰 요청은 간격 조건 통과). 캐시 results/per_request.json.gz(안전 런만).
+"""Attainment at the points that decide the comparisons, with 95% intervals from a hierarchical bootstrap
+(resample the repeated runs with replacement, then resample 20 time blocks within each run) (report Appendix F).
+Written for the second mock review (R2-4, meta-reviewer item A11); the third review (A13-16) added the 30 ms
+decision points and the points behind the threefold claim. Usage: python3 analysis/decisive_ci.py [--tex] [--rebuild]
+A request meets the SLO when its first token arrives within T and its longest gap is within B (a request whose output
+is one token passes the gap condition). Reads the cache results/per_request.json.gz and uses safe runs only.
 """
 import os, random, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import slo_sensitivity as ss  # noqa: E402
 
-# 캐시가 safe_runs.csv와 어긋나면 자동으로 다시 만든다. --rebuild면 항상 다시 만든다.
+# The cache is rebuilt automatically when it no longer matches safe_runs.csv; --rebuild always rebuilds it.
 C = ss.load_cache("results/safe_runs.csv", rebuild="--rebuild" in sys.argv)
 POINTS = [  # (label, workload, [(stages, config)], total rate, per-GPU, T, B_ms)
     ("26B NVFP4 4K, replicas chunk 2,560", "random", [(("E5", "E7"), "26_B2"), (("E8",), "26_B2_c2560")], 2, 1, 1.0, 50),

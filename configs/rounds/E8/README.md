@@ -1,4 +1,4 @@
-*English translation of `E8_RUNBOOK.md`; the Korean file is the original.*
+*English translation of `README.ko.md`; the Korean file is the original. Commands below use the flat `configs/` layout of the time: `configs/setup_E8.sh`, `configs/step0_E8.sh`, and `configs/run_E8.sh` now live in `configs/rounds/E8/` (see `configs/README.md`).*
 
 # Round E8 run order (review response B1, B2, B3)
 

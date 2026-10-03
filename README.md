@@ -54,7 +54,7 @@ PROTOCOL.md pre-registered protocol v1.7 (Korean, committed before the first run
 
 ## Reproduce the report's numbers and figures
 
-`aggregate.py`, `safe_runs.py`, `chunk31_buckets.py`, and `make_figures.py` (transfer logs and socket samples under `results/E8/` and `results/E9/`) read the raw per-run folders, so unpack the release assets (`results-<round>.tar.gz`, checksums in `SHA256SUMS.txt`) into `results/<round>/` first; `boundary_model.py` and `decisive_ci.py` run from the committed `safe_runs.csv` and `per_request.json.gz` alone:
+`aggregate.py`, `safe_runs.py`, `chunk31_buckets.py`, and `make_figures.py` (transfer logs and socket samples under `results/E8/`) read the raw per-run folders, so unpack the release assets (`results-<round>.tar.gz`, checksums in `SHA256SUMS.txt`) into `results/<round>/` first; `boundary_model.py` and `decisive_ci.py` run from the committed `safe_runs.csv` and `per_request.json.gz` alone:
 
 ```
 python3 analysis/aggregate.py results/ -o results/all_runs.csv                 # every run, report SLOs by default
@@ -72,7 +72,7 @@ cd paper/en && tectonic main.tex && cp main.pdf ../main.pdf                     
 
 One person, about $270 of cloud time, 455 runs over nine measurement rounds. The protocol was committed before the first run and the predictions for the last round before that round (Appendix D and E). Four rounds of AI-assisted mock peer review are in `paper/reviews/`; the first two prompted the two follow-up rounds, and the fourth reviewed the model in Section 6. An AI coding assistant (Claude) wrote the harness and analysis scripts, operated the infrastructure, ran the mock reviews, and drafted text and figures; the author designed the study, paid for and directed the runs, and checked the reported numbers against the raw data.
 
-Provenance of this public repository: the history is that of the private working repository, rewritten with `git filter-repo`. The AWS account ID, local paths, and a personal workspace name were replaced or removed; the raw per-run folders, an internal notes folder, an obsolete draft, and an internal to-do file were removed; tool-session trailers were stripped from commit messages; and the author e-mail was unified. `commit-map.txt` maps old to new hashes. A bundle of the original repository is kept by the author; its SHA-256 is in Appendix G of the report.
+Provenance of this public repository: the history is that of the private working repository, rewritten with `git filter-repo`. The AWS account ID, local paths, and a personal workspace name were replaced or removed; the raw per-run folders, an internal notes folder, an obsolete draft, and an internal to-do file were removed; tool-session trailers were stripped from commit messages; and the author e-mail was unified. Commits after the bundle base reorganize the tree for readers and translate code comments; data and script logic are unchanged. `commit-map.txt` maps old to new hashes. A bundle of the original repository is kept by the author; its SHA-256 is in Appendix G of the report.
 
 ## License
 

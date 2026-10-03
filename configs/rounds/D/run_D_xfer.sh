@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# 세션 D-1 · KV 전송 경로만 분리해서 측정 (모델 없이 → vLLM 부하 제거)
-# 목적: (1) 라이브러리 순수 천장, (2) UCX 노브별 변화, (3) 흐름 수 효과
-# 사용: A_PRIV, B_PRIV 환경변수에 두 GPU 노드 사설 IP를 넣고 실행
+# Round D-1 · measure the KV transfer path in isolation (no model, so no vLLM load)
+# Purpose: (1) the library's raw ceiling, (2) change per UCX knob, (3) effect of the number of flows
+# Usage: set A_PRIV and B_PRIV to the private IPs of the two GPU nodes, then run
 set -u
 : "${A_PRIV:?}"; : "${B_PRIV:?}"
 OUT=${OUT:-~/pd/results/D1}
@@ -9,19 +9,19 @@ rsh(){ ssh -o StrictHostKeyChecking=no ubuntu@"$1" "${@:2}"; }
 log(){ echo "[$(date -u +%H:%M:%S)] $*"; }
 mkdir -p "$OUT"
 
-# --- 0. 기준점: iperf 흐름 수별 ---
-log "iperf 1/2/4/8 흐름"
+# --- 0. Baseline: iperf by number of flows ---
+log "iperf 1/2/4/8 flows"
 for P in 1 2 4 8; do
   rsh "$A_PRIV" "iperf3 -c $B_PRIV -P $P -t 10 -J" | jq -r "\"P=$P \(.end.sum_sent.bits_per_second/1e9) Gbps\"" | tee -a "$OUT/iperf.txt"
 done
 
-# --- 1. NIXL 단독 전송 (nixlbench 또는 파이썬 하네스) ---
-# 이미지 안에 nixlbench가 있는지 먼저 확인
+# --- 1. NIXL-only transfer (nixlbench or the Python harness) ---
+# First check whether nixlbench exists inside the image
 rsh "$A_PRIV" "docker run --rm --gpus all vllm/vllm-openai:v0.30.0 bash -lc 'which nixlbench || python -c \"import nixl; print(nixl.__file__)\"'" | tee "$OUT/nixl_probe.txt"
 
-# 파이썬 하네스: VRAM 버퍼를 64 KiB 디스크립터 N개로 READ 전송
-# harness/xfer_probe.py 를 두 노드에 두고 target/initiator로 실행
-# 인자: 총 전송량 MB, 디스크립터 KiB, num_threads, split_batch_size
+# Python harness: READ-transfer a VRAM buffer as N descriptors of 64 KiB
+# Put harness/xfer_probe.py on both nodes and run it as target/initiator
+# Arguments: total transfer MB, descriptor KiB, num_threads, split_batch_size
 for MB in 24 140 260 412; do
   for DESC in 64 256; do
     for NT in 0 8 16; do
@@ -36,8 +36,8 @@ for MB in 24 140 260 412; do
   done
 done
 
-# --- 2. UCX 노브 스윕 (가장 유망한 조합만) ---
-# 기본값: TX_SEG_SIZE 8k, RX_SEG_SIZE 64k, MAX_IOV 6, ZCOPY_THRESH auto, RNDV_THRESH auto
+# --- 2. UCX knob sweep (only the most promising combinations) ---
+# Defaults: TX_SEG_SIZE 8k, RX_SEG_SIZE 64k, MAX_IOV 6, ZCOPY_THRESH auto, RNDV_THRESH auto
 KNOBS=(
   "기본"
   "UCX_TCP_TX_SEG_SIZE=64k"
@@ -57,12 +57,12 @@ for K in "${KNOBS[@]}"; do
     | sed "s/^/[$K] /" | tee -a "$OUT/knob_sweep.txt"
 done
 
-# --- 3. 대역폭 쉐이핑 재측정 (마찰 #9 수정판) ---
-# burst = rate × 10 ms, 프리필(송신) 노드에만, 설정마다 iperf 검증
+# --- 3. Bandwidth shaping re-measurement (friction #9 corrected version) ---
+# burst = rate × 10 ms, on the prefill (sending) node only, iperf check for every setting
 for BW in 1gbit 2gbit 3gbit 5gbit; do
-  BURST=$(python3 -c "print(int(${BW%gbit}*1e9/8*0.01))")   # 10 ms 분량 바이트
+  BURST=$(python3 -c "print(int(${BW%gbit}*1e9/8*0.01))")   # bytes for 10 ms
   rsh "$A_PRIV" "IF=\$(ip -o -4 route show to default | awk '{print \$5}'); sudo tc qdisc replace dev \$IF root tbf rate $BW burst ${BURST} latency 50ms"
-  rsh "$A_PRIV" "iperf3 -c $B_PRIV -P 1 -t 8 -J" | jq -r "\"$BW 검증 \(.end.sum_sent.bits_per_second/1e9) Gbps\"" | tee -a "$OUT/tc_verify.txt"
+  rsh "$A_PRIV" "iperf3 -c $B_PRIV -P 1 -t 8 -J" | jq -r "\"$BW check \(.end.sum_sent.bits_per_second/1e9) Gbps\"" | tee -a "$OUT/tc_verify.txt"
   rsh "$A_PRIV" "cd ~/pd && python3 harness/xfer_probe.py initiator --peer $B_PRIV --mb 140 --desc-kib 64 --num-threads 8 --split 1024" | sed "s/^/[$BW] /" | tee -a "$OUT/tc_xfer.txt"
 done
 rsh "$A_PRIV" "IF=\$(ip -o -4 route show to default | awk '{print \$5}'); sudo tc qdisc del dev \$IF root 2>/dev/null || true"

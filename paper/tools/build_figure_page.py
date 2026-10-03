@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Build the figure gallery page from the paper draft, so captions have a single source.
+"""Build the figure gallery page from the Korean draft, so the captions have a single source.
 
-Usage: python3 paper/tools/build_figure_page.py paper/ko/draft.md -o OUT.html
+Usage (needs the `markdown` package, imported via build_draft_html):
+  uv run --with markdown python3 paper/tools/build_figure_page.py paper/ko/draft.md -o OUT.html
 
-Each <!-- FIG name | 그림 N. caption --> in the draft becomes one card with the themed SVG and the same
-caption, labelled with the section it sits in. Figures in paper/figures/ that the draft does not use
-are listed at the end with EXTRA captions below.
+Each <!-- FIG name | <number>. caption --> comment in the draft becomes one card with the themed SVG
+(from paper/figures/, see build_draft_html.svg) and the same caption, labelled with the section it sits in.
+Figures in paper/figures/ that the draft does not use are appended with the captions in EXTRA.
+
+The page is a companion to the Korean draft, so its own UI text (title, intro, table headers, legend box,
+the "extra" labels and the EXTRA captions) is Korean. The figure scripts are analysis/make_figures.py and
+analysis/slo_sensitivity.py.
 """
 import argparse, html, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -83,7 +88,7 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument("md"); ap.add_argument("-o", "--out", required=True)
     a = ap.parse_args()
     src = open(a.md).read()
-    figs, sec = [], ""
+    figs, sec = [], ""  # (svg name, number label, caption, section heading)
     for line in src.split("\n"):
         m = re.match(r"^(#{2,3}) (.+)$", line)
         if m:
@@ -93,7 +98,7 @@ def main():
             num, _, rest = cap.partition(".")
             figs.append((name, num.strip(), rest.strip(), sec))
     used = {f[0] for f in figs}
-    for name, cap in EXTRA.items():
+    for name, cap in EXTRA.items():  # figures not referenced by the draft: labelled "추가" (extra), section "원고 밖" (outside the draft)
         if name not in used and os.path.exists(os.path.join(FIG_DIR, name + ".svg")):
             figs.append((name, "추가", cap, "원고 밖"))
     rows, cards = [], []
@@ -101,9 +106,11 @@ def main():
         head = cap.split(". ")[0].rstrip(".")
         rows.append(f'<tr><td class="n">{html.escape(num)}</td><td><a href="#{name}">{html.escape(head)}</a></td>'
                     f'<td>{html.escape(s)}</td><td style="font-family:var(--mono);font-size:12px;color:var(--muted)">{name}.pdf</td></tr>')
+        # the card's heading, not a figcaption, labels the SVG
+        plot = svg(name, i).replace('aria-labelledby="cap', 'aria-labelledby="t')
         cards.append(f'<figure id="{name}"><div class="fh"><span class="no">{html.escape(num)}</span>'
                      f'<h3 id="t{i}">{html.escape(head)}</h3><div class="chips"><span>{html.escape(s)}</span></div></div>'
-                     f'<div class="plot">{svg(name, i).replace("aria-labelledby=\"cap", "aria-labelledby=\"t")}</div>'
+                     f'<div class="plot">{plot}</div>'
                      f'<figcaption><p>{html.escape(cap)}</p></figcaption></figure>')
     page = f"""<title>PD 논문 그림</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">

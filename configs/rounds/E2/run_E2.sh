@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# 세션 E2 · g7e 쌍에서 분리(P1) 대 복제본(B2), 전송 튜닝 기본 적용
-# 가설: GPU가 빠르면 디코드 스텝 여유가 커져 분리의 이득이 줄어든다
+# Round E2 · disaggregation (P1) vs replicas (B2) on a g7e pair, transfer tuning applied by default
+# Hypothesis: a faster GPU leaves more decode-step headroom, so the gain from disaggregation shrinks
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 : "${A_PRIV:?}" "${B_PRIV:?}"
@@ -14,7 +14,7 @@ rsh(){ ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 ubuntu@"$1" "export 
 xfer(){ rsh $B_PRIV "docker logs vllm 2>&1 | grep 'KV Transfer metrics' | tail -1 | cut -c1-240" | sed 's/^/    xfer: /'; }
 health(){ curl -s -o /dev/null -w "%{http_code}" --max-time 10 "http://$1:$2/health"; }
 
-serve_b2(){ # 복제본 2 + 라운드로빈
+serve_b2(){ # 2 replicas + round robin
   pkill -f "rr_proxy|toy_proxy" 2>/dev/null; sleep 1
   rsh $A_PRIV "CHUNK=2560 PREFIX=off PORT=8100 GPU_UTIL=0.90 harness/serve.sh $MAIN" >/dev/null &
   rsh $B_PRIV "CHUNK=2560 PREFIX=off PORT=8100 GPU_UTIL=0.90 harness/serve.sh $MAIN" >/dev/null &
@@ -24,7 +24,7 @@ serve_b2(){ # 복제본 2 + 라운드로빈
   [ "$(health $A_PRIV 8100)" = 200 ] && [ "$(health $B_PRIV 8100)" = 200 ] || return 1
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$MAIN CHUNK=2560 PREFIX=off
 }
-serve_p1(){ # 프리필 A → 디코드 B, 튜닝 적용
+serve_p1(){ # prefill A -> decode B, tuning applied
   pkill -f "rr_proxy|toy_proxy" 2>/dev/null; sleep 1
   rsh $A_PRIV "UCX_EXTRA='$TUNED' CHUNK=2560 PREFIX=off PORT=8100 GPU_UTIL=0.90 CONNECTOR=producer OWN_IP=$A_PRIV harness/serve.sh $MAIN" >/dev/null &
   rsh $B_PRIV "UCX_EXTRA='$TUNED' CHUNK=2560 PREFIX=off PORT=8200 GPU_UTIL=0.90 CONNECTOR=consumer OWN_IP=$B_PRIV harness/serve.sh $MAIN" >/dev/null &
@@ -36,13 +36,13 @@ serve_p1(){ # 프리필 A → 디코드 B, 튜닝 적용
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$MAIN CHUNK=2560 PREFIX=off
 }
 RATES=${RATES:-"4 8 12 16 24"}
-log "E2-0 iperf (g7e 쌍)"
+log "E2-0 iperf (g7e pair)"
 rsh $A_PRIV "for P in 1 4; do echo -n \"P=\$P \"; iperf3 -c $B_PRIV -P \$P -t 6 -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'; done" | sed 's/^/    /'
-log "E2-1 B2 복제본 사다리"
+log "E2-1 B2 replica ladder"
 serve_b2 && for r in $RATES; do log "  B2 r$r"; bench E2 B2 N0 sharegpt $r; done
-log "E2-2 P1 분리(튜닝) 사다리"
+log "E2-2 P1 disaggregation (tuned) ladder"
 serve_p1 && for r in $RATES; do log "  P1 r$r"; bench E2 P1tuned N0 sharegpt $r; xfer; done
-log "E2-3 입력 4K 행 (0.5·1 req/s, B2 대 P1)"
+log "E2-3 input 4K row (0.5·1 req/s, B2 vs P1)"
 serve_b2 && for r in 0.5 1; do bench E2 B2 N0 random $r --random-input-len 4096 --random-output-len 512; done
 serve_p1 && for r in 0.5 1; do bench E2 P1tuned N0 random $r --random-input-len 4096 --random-output-len 512; xfer; done
 pkill -f "rr_proxy|toy_proxy" 2>/dev/null; for h in $A_PRIV $B_PRIV; do rsh $h "docker rm -f vllm >/dev/null 2>&1"; done

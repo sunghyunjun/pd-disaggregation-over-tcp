@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
-"""영어 원고 v4 그림: v3 그림 전부 + 6절 경계 그림(v4_boundary).
+"""Entry point for every figure of the report: writes paper/figures/<name>.pdf and .svg plus figures.json.
 
-사용:
+Usage:
   uv run --with numpy python3 analysis/boundary_model.py --json paper/figures/boundary.json
   uv run --with matplotlib python3 analysis/make_figures.py [-o paper/figures]
 
-v4_boundary  저부하 모델(26B FP8, g7e로 보정)이 예측한 첫 토큰 시간: 간격 한도를 지키는 가장 큰 청크의 복제본 대
-             TCP 위 1P1D(하이브리드 KV, 모든 레이어가 전역이라고 가정한 KV, 빠른 연결). 두 곡선 사이에서 1P1D만
-             두 한도를 함께 지킨다. 16K 너머는 외삽이다.
+Draws the main-text figures from fig_results.py (chunk stall, TTFT decomposition, who wins, proxy GC) and
+fig_headtohead.py (head to head, transfer path), the Appendix A figures from fig_common.py, and the Section 6
+boundary figure defined here:
+
+v4_boundary  TTFT predicted by the low-load model (26B FP8, calibrated on g7e): replicas at the largest chunk that
+             keeps the gap limit, against 1P1D over TCP (this checkpoint's KV cache, a KV cache as if every layer
+             were global, and a fast link). Between the two curves only 1P1D meets both limits. Beyond 16K the
+             model extrapolates.
 """
 import argparse, json, os, sys
 

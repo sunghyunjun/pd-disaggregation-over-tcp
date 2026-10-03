@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E1b · 31B FP8 교차 비교 (L40S KV 부족 → 양쪽 max-model-len 16384으로 통일) + 26B 고부하 확장
+# E1b · 31B FP8 cross comparison (L40S is short on KV, so both sides use max-model-len 16384) + 26B high-load extension
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 : "${E_PRIV:?}" "${G_PRIV:?}"
@@ -22,14 +22,14 @@ RATES=${RATES:-"1 4 8 12"}
 
 log "E1b · 31B FP8 · L40S util 0.90, maxlen 16384"
 serve "$E_PRIV" 8100 "$M31" 0.90 16384 && { kvinfo "$E_PRIV"; sweep "l40s_31b_fp8_len16k" $RATES; }
-log "E1b · 31B FP8 · PRO6000 util 0.42, maxlen 16384 [KV 맞춤 시도]"
+log "E1b · 31B FP8 · PRO6000 util 0.42, maxlen 16384 [KV matching attempt]"
 serve "$G_PRIV" 8200 "$M31" 0.42 16384 && { kvinfo "$G_PRIV"; sweep "pro6000_31b_fp8_len16k_kvmatch" $RATES; }
-log "E1b · 31B FP8 · PRO6000 util 0.90, maxlen 16384 [최대 KV]"
+log "E1b · 31B FP8 · PRO6000 util 0.90, maxlen 16384 [max KV]"
 serve "$G_PRIV" 8200 "$M31" 0.90 16384 && { kvinfo "$G_PRIV"; sweep "pro6000_31b_fp8_len16k_kvmax" $RATES; }
 
-log "E1b · 26B FP8 고부하 · PRO6000 최대 KV (16·24·32)"
+log "E1b · 26B FP8 high load · PRO6000 max KV (16·24·32)"
 serve "$G_PRIV" 8200 "$M26" 0.90 32768 && sweep "pro6000_26b_fp8_kvmax" 16 24 32
-log "E1b · 26B FP8 고부하 · L40S (16 — 한계 확인)"
+log "E1b · 26B FP8 high load · L40S (16, limit check)"
 serve "$E_PRIV" 8100 "$M26" 0.90 32768 && sweep "l40s_26b_fp8_kvmatch" 16
 
 for h in $E_PRIV $G_PRIV; do rsh $h "docker rm -f vllm >/dev/null 2>&1"; done

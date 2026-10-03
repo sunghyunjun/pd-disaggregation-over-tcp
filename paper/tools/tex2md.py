@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-"""Convert paper/en/main.tex to the markdown dialect of paper/tools/build_draft_html.py.
+"""Convert paper/en/main.tex to the markdown dialect read by paper/tools/build_draft_html.py.
 
 Handles only the LaTeX this paper uses: sections (numbered, appendix letters), \\paragraph, itemize/enumerate,
-figures (-> <!-- FIG name | Figure N. caption -->), tabularx tables (-> markdown tables with a caption line),
-the two display equations, inline math, \\cite (numeric, order of first use, list built from refs.bib),
-\\ref/\\eqref, footnotes (inline in parentheses), \\todo, \\url.
+figures (-> <!-- FIG name | Figure N. caption -->, where name is an SVG in paper/figures/), tabularx tables
+(-> markdown tables with a caption line), the display equations, inline math, \\cite (numeric, order of first
+use, list built from refs.bib), \\ref/\\eqref, footnotes (inline in parentheses), \\todo, \\url.
 
-Usage: python3 paper/tools/tex2md.py paper/en/main.tex -o paper/en/draft.md
+Usage: python3 paper/tools/tex2md.py paper/en/main.tex -o paper/en/draft.md --bib paper/en/refs.bib
+(--bib defaults to refs.bib next to the .tex file)
 """
 import argparse, re
 
 
 def braced(s, i):
-    """s[i] == '{' -> (content, index after the closing brace)"""
+    """Given s[i] == '{', return (content, index just after the matching closing brace)."""
     assert s[i] == "{", s[i:i + 30]
     depth = 0
     for j in range(i, len(s)):
@@ -26,7 +27,7 @@ def braced(s, i):
 
 
 def sub_cmd(s, name, fn, nargs=1, opt=False):
-    """Replace \\name[opt]{a}{b} with fn(*args) (balanced braces)."""
+    """Replace every \\name[opt]{a}{b} with fn(*args), honouring balanced braces."""
     out, i, pat = [], 0, "\\" + name
     while True:
         k = s.find(pat, i)
@@ -49,6 +50,7 @@ def sub_cmd(s, name, fn, nargs=1, opt=False):
 
 
 def math(m):
+    """Render the inside of $...$ as HTML text (Unicode operators, <sub>/<sup>, italic single letters)."""
     m = m.strip()
     m = re.sub(r"\\(mathrm|text)\{([^{}]*)\}", r"\2", m)
     reps = [(r"\times\,", "× "), (r"\times", "×"), (r"\ge", "≥"), (r"\le", "≤"),
@@ -66,6 +68,7 @@ def math(m):
 
 
 def inline(s, ctx):
+    """Convert inline LaTeX (commands, math, ligatures, escapes) to markdown/HTML."""
     s = s.replace("\\$", "\x00DOLLAR\x00")
     s = sub_cmd(s, "todo", lambda a: f'<span class="todo">{a}</span>')
     s = sub_cmd(s, "url", lambda a: f"<{a}>")
@@ -87,12 +90,13 @@ def inline(s, ctx):
 
 
 def bib_entries(path):
+    """Parse refs.bib into {key: {field: value}} (first occurrence of a field wins)."""
     txt = open(path).read()
     ents = {}
     for m in re.finditer(r"@(\w+)\{([^,]+),", txt):
         key, start = m.group(2).strip(), m.end()
         depth, j = 1, m.end() - 1
-        # find end of entry: matching brace of '@type{'
+        # find the end of the entry: the brace matching the one after '@type'
         depth = 0
         for j in range(txt.index("{", m.start()), len(txt)):
             if txt[j] == "{":
@@ -115,6 +119,7 @@ def bib_entries(path):
 
 
 def clean_bib(v):
+    """Strip LaTeX markup from a BibTeX field value."""
     v = v.replace("\\textasciitilde{}", "~").replace("\\url", "").replace("\\&", "&").replace("---", "—").replace("--", "–")
     v = v.replace("\\_", "_")
     v = v.replace("\\~n", "ñ").replace("\\'e", "é").replace("\\`a", "à").replace("\\'", "").replace('\\"', "")
@@ -133,7 +138,7 @@ def main():
     t1, t2 = title.split("\\\\")
     t2 = t2.replace("\\large", "").strip()
 
-    # pass 1: numbering of labels
+    # pass 1: assign numbers to \label targets (sections, figures, tables, equations)
     labels, sec, sub, app, fig, tab, eq = {}, 0, 0, False, 0, 0, 0
     afig = 0
     tabsec = {}
@@ -176,7 +181,7 @@ def main():
     body = re.sub(r"\\(setcounter|renewcommand|counterwithin)\{[^{}]*\}(\{[^{}]*(\{[^{}]*\})?[^{}]*\})?", "", body)
     body = body.replace("\\clearpage", "").replace("\\bibliographystyle{unsrtnat}", "")
 
-    # block-level pass
+    # pass 2: block-level conversion
     lines = body.split("\n")
     i, app, sec, sub, fign, afign, tabn, tabsec, eqn = 0, False, 0, 0, 0, 0, 0, {}, 0
     curletter = ""
@@ -300,7 +305,7 @@ def main():
         blk.append(L); i += 1
     flush()
 
-    # references
+    # reference list, numbered in order of first citation
     ents = bib_entries(a.bib or a.tex.replace("main.tex", "refs.bib"))
     refs = ["## References", "", '<div class="refs" markdown="1">', ""]
     for n, k in enumerate(cites, 1):
@@ -315,7 +320,7 @@ def main():
         txt = " ".join(x if x.endswith(".") else x + "." for x in (au, ti, venue, yr) if x)
         refs.append(f"- [{n}] {txt}" + (f" <{url}>" if url else ""))
     refs += ["", "</div>", ""]
-    # put references before the appendix (the first appendix section is "A.")
+    # place the references before the appendix (the first appendix section heading is "## A. ")
     md = "\n".join(out)
     k = md.find("\n## A. ")
     md = md[:k] + "\n" + "\n".join(refs) + md[k:] if k >= 0 else md + "\n" + "\n".join(refs)

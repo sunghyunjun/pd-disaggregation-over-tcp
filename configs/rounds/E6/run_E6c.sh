@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 세션 E6c · E6 재개(2): 보정한 관문(짧은 프롬프트 바이트 일치 + 긴 프롬프트 핵심 단어 겹침 ≥0.4)으로 남은 구성을 잰다
-# 목적: 전송을 프리필 계산 뒤에 숨겨 31B 4K의 첫 토큰 꼬리를 대화 SLO(1초) 안으로 넣을 수 있는가.
-# 대조: 끌어오기(기존 튜닝 1P1D) / 푸시(v0.30.0 원본, 한 번에 WRITE) / 레이어별 푸시(PR 적용본).
-# 관문: 각 푸시 구성은 같은 프롬프트의 그리디 출력이 끌어오기와 바이트 단위로 같아야 측정한다.
+# Round E6c · E6 resumed (2): measure the remaining configurations with the calibrated gate (byte match for short prompts + key-word overlap ≥0.4 for long prompts)
+# Purpose: can hiding the transfer behind prefill compute bring the 31B 4K TTFT tail within the chat SLO (1 s).
+# Controls: pull (the existing tuned 1P1D) / push (stock v0.30.0, one WRITE at the end) / layer-wise push (with the PR applied).
+# Gate: a push configuration is measured only if its greedy output for the same prompts is byte-identical to pull.
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 ulimit -n 65536 2>/dev/null || true
@@ -34,7 +34,7 @@ serve_pull(){ CFG=$1; local M=$2; stop_all
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$M CHUNK=2560 PREFIX=off
   export RESET_URLS="http://$A_PRIV:8100 http://$B_PRIV:8200"; }
 
-# serve_push 이름 모델 stock|lw
+# serve_push NAME MODEL stock|lw
 serve_push(){ CFG=$1; local M=$2 MODE=$3 mounts="" envx=""; stop_all
   [ "$MODE" = lw ] && { mounts="$PATCH_MOUNTS"; envx="VLLM_NIXL_LAYERWISE_PUSH=1"; }
   rsh $A_PRIV "UCX_EXTRA='$TUNED' ENV_EXTRA='$envx' EXTRA_MOUNTS='$mounts' KV_CONNECTOR_NAME=NixlPushConnector KV_ENGINE_ID=$ENGINE CHUNK=2560 PREFIX=off PORT=8100 GPU_UTIL=0.90 CONNECTOR=producer OWN_IP=$A_PRIV harness/serve.sh $M" >/dev/null &
@@ -42,15 +42,15 @@ serve_push(){ CFG=$1; local M=$2 MODE=$3 mounts="" envx=""; stop_all
   setsid nohup python3 $PROXY_PUSH --model $M --prefill $A_PRIV:8100 --decode $B_PRIV:8200 --prefill-engine-id $ENGINE \
     --prefill-kv-host $A_PRIV --prefill-side-channel-port 5600 --prefill-tp-size 1 --prefill-pp-size 1 --port 8000 > results/proxy_E6_$CFG.log 2>&1 </dev/null & disown
   sleep 8; ready || return 1
-  # 실제로 어떤 코드가 돌고 있는지 서버 로그로 확인(레이어별은 PR의 INFO 한 줄이 떠야 한다)
+  # Confirm from the server log which code is actually running (layer-wise must print the PR's one INFO line)
   local on; on=$(rsh $A_PRIV "docker logs vllm 2>&1 | grep -c 'layer-wise push ENABLED'")
-  log "  [$CFG] 레이어별 푸시 로그 줄 수(P): $on"
-  if [ "$MODE" = lw ] && [ "${on:-0}" -eq 0 ]; then log "  [$CFG] 레이어별 푸시가 켜지지 않음 → 이 구성 중단"; return 1; fi
-  if [ "$MODE" = stock ] && [ "${on:-0}" -ne 0 ]; then log "  [$CFG] 원본이어야 하는데 레이어별이 켜짐 → 중단"; return 1; fi
+  log "  [$CFG] layer-wise push log lines (P): $on"
+  if [ "$MODE" = lw ] && [ "${on:-0}" -eq 0 ]; then log "  [$CFG] layer-wise push not enabled, aborting this configuration"; return 1; fi
+  if [ "$MODE" = stock ] && [ "${on:-0}" -ne 0 ]; then log "  [$CFG] should be stock but layer-wise is enabled, aborting"; return 1; fi
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$M CHUNK=2560 PREFIX=off
   export RESET_URLS="http://$A_PRIV:8100 http://$B_PRIV:8200"; }
 
-gate(){ log "  [$CFG] 정확성 관문 기록"; python3 harness/greedy_check.py run --base-url $BASE_URL --model $MODEL --sharegpt $SHAREGPT_JSON --out results/gate_E6/$CFG.json --repeat ${1:-1} 2>&1 | sed 's/^/    /'; }
+gate(){ log "  [$CFG] recording the correctness gate"; python3 harness/greedy_check.py run --base-url $BASE_URL --model $MODEL --sharegpt $SHAREGPT_JSON --out results/gate_E6/$CFG.json --repeat ${1:-1} 2>&1 | sed 's/^/    /'; }
 gate_vs(){ python3 harness/greedy_check.py compare results/gate_E6/$1.json results/gate_E6/$CFG.json 2>&1 | sed 's/^/    /'; return ${PIPESTATUS[0]}; }
 
 pt(){ local R=$1; local t0; t0=$(date -u +%s); log "  $CFG random r$R"
@@ -59,34 +59,34 @@ pt(){ local R=$1; local t0; t0=$(date -u +%s); log "  $CFG random r$R"
   for h in $A_PRIV $B_PRIV; do rsh $h "docker logs vllm --since $t0 2>&1 | grep 'KV Transfer metrics'" > results/xfer_E6/${CFG}_r${R}_${h##*.}.log 2>/dev/null; done; }
 
 
-# 채팅 양식 관문. 기록은 <구성>_chat.json. 원문 완성으로 찍은 E6 초반 기록은 증거로 남겨 둔다.
-gate(){ log "  [$CFG] 정확성 관문(채팅) 기록"; python3 harness/greedy_check.py run --base-url $BASE_URL --model $MODEL --sharegpt $SHAREGPT_JSON --out results/gate_E6/${CFG}_chat.json --repeat ${1:-1} 2>&1 | sed 's/^/    /'; }
+# Chat-format gate. Records go to <CFG>_chat.json. The early E6 records taken with raw completions are kept as evidence.
+gate(){ log "  [$CFG] recording the correctness gate (chat)"; python3 harness/greedy_check.py run --base-url $BASE_URL --model $MODEL --sharegpt $SHAREGPT_JSON --out results/gate_E6/${CFG}_chat.json --repeat ${1:-1} 2>&1 | sed 's/^/    /'; }
 gate_vs(){ python3 harness/greedy_check.py compare results/gate_E6/${1}_chat.json results/gate_E6/${CFG}_chat.json 2>&1 | sed 's/^/    /'; return ${PIPESTATUS[0]}; }
 serve_single(){ CFG=$1; local M=$2; stop_all
   rsh $A_PRIV "CHUNK=2560 PREFIX=off PORT=8100 GPU_UTIL=0.90 harness/serve.sh $M" >/dev/null
-  [ "$(health $A_PRIV 8100)" = 200 ] || { log "  [$CFG] 단일 서버 기동 실패"; return 1; }
+  [ "$(health $A_PRIV 8100)" = 200 ] || { log "  [$CFG] single server failed to start"; return 1; }
   export BASE_URL=http://$A_PRIV:8100 MODEL=$M; }
-# 기준 정하기: 끌어오기가 단일 노드와 같으면 단일을, 다르면 끌어오기를 기준으로(그 사실을 기록)
+# Choosing the reference: if pull equals single node use single, otherwise use pull as the reference (and record that fact)
 pick_ref(){ local single=$1 pull=$2
   if python3 harness/greedy_check.py compare results/gate_E6/${single}_chat.json results/gate_E6/${pull}_chat.json >/dev/null 2>&1; then
-    log "  기준: 끌어오기 = 단일 노드 → 단일 노드를 정답으로"; REF=$single
-  else log "  경고: 끌어오기 ≠ 단일 노드 → 끌어오기를 기준으로 쓰고 이 차이를 따로 조사"; REF=$pull; fi; }
-measure_if(){ if gate_vs $REF; then "$@"; else log "  관문 불일치 → 측정 생략"; fi; }
+    log "  reference: pull = single node, so single node is the ground truth"; REF=$single
+  else log "  warning: pull != single node, using pull as the reference and investigating this difference separately"; REF=$pull; fi; }
+measure_if(){ if gate_vs $REF; then "$@"; else log "  gate mismatch, measurement skipped"; fi; }
 
 
-# 보정한 관문. 문턱 근거: 같은 프롬프트 0.58 이상, 다른 프롬프트(가짜 실패) 0.17 이하.
+# Calibrated gate. Threshold basis: same prompt 0.58 or higher, different prompt (false failure) 0.17 or lower.
 gate_vs(){ python3 harness/greedy_check.py compare results/gate_E6/${1}_chat.json results/gate_E6/${CFG}_chat.json --exact-under 100 --min-overlap 0.4 2>&1 | sed 's/^/    /'; return ${PIPESTATUS[0]}; }
-REF=31_pull   # E6b에서 끌어오기 ≠ 단일(늦은 단어 갈림)이 확인되어 끌어오기를 기준으로
+REF=31_pull   # E6b confirmed pull != single (late word divergence), so pull is the reference
 
-log "E6c-1 31B · 푸시 원본"
+log "E6c-1 31B · stock push"
 serve_push 31_push $M31 stock && { gate; measure_if eval 'pt 0.25; pt 0.5'; }
-log "E6c-2 31B · 레이어별 푸시"
+log "E6c-2 31B · layer-wise push"
 serve_push 31_lw $M31 lw && { gate; measure_if eval 'pt 0.25; pt 0.5; pt 1'; }
-log "E6c-3 26B · 단일 노드 정답"
+log "E6c-3 26B · single-node ground truth"
 serve_single 26_single $M26 && gate 2
-log "E6c-4 26B · 끌어오기"
+log "E6c-4 26B · pull"
 serve_pull 26_pull $M26 && { gate; gate_vs 26_single; REF=26_pull; pt 1; pt 2; }
-log "E6c-5 26B · 레이어별 푸시"
+log "E6c-5 26B · layer-wise push"
 serve_push 26_lw $M26 lw && { gate; measure_if eval 'pt 1; pt 2'; }
 
 stop_all

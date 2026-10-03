@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Start (or restart) the vLLM server container and wait for readiness. Usage:
 #   serve.sh MODEL [extra vllm args...]      env: CHUNK (2048), PORT (8000), MAXLEN (32768), GPU_UTIL (0.90), PREFIX (on|off), CONNECTOR (none|producer|consumer), OWN_IP, IMAGE
-#   선택(비어 있으면 기존과 완전히 같음): ENV_EXTRA(컨테이너 환경변수 K=V 목록), EXTRA_MOUNTS(host:container[:ro] 목록),
-#   KV_CONNECTOR_NAME(기본 NixlConnector), KV_ENGINE_ID(kv-transfer-config의 engine_id)
-#   MM_LIMIT(기본 '{"image":0}', --limit-mm-per-prompt 값. 세션 E8의 작은 청크 기동 확인용)
+#   Optional (behavior is identical to before when left empty): ENV_EXTRA (list of container env vars K=V), EXTRA_MOUNTS (list of host:container[:ro]),
+#   KV_CONNECTOR_NAME (default NixlConnector), KV_ENGINE_ID (engine_id in kv-transfer-config)
+#   MM_LIMIT (default '{"image":0}', value for --limit-mm-per-prompt; used in round E8 to confirm startup with small chunks)
 # Prints the memory-profile lines and returns 0 when "Application startup complete" appears, 1 on failure (log saved to results/serve_fail_<ts>.log).
 set -u
 MODEL=$1; shift

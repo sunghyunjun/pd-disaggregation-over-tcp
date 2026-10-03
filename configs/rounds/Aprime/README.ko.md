@@ -15,7 +15,7 @@ serve() { docker rm -f vllm 2>/dev/null; docker run -d --name vllm --gpus all --
   -e HF_TOKEN=$HF_TOKEN vllm/vllm-openai:v0.30.0 "$@" --port 8000 --max-model-len 32768 --gpu-memory-utilization 0.90 --seed 0 \
   --limit-mm-per-prompt '{"image":0}' ; docker logs -f vllm 2>&1 | grep -m1 -i -E "startup complete|error" ; }
 kvinfo() { docker logs vllm 2>&1 | grep -i -E "KV cache|Maximum concurrency|GPU KV" | tail -3; }
-step() { cd ~/pd && MODEL=$1 BASE_URL=http://127.0.0.1:8000 RESULTS_DIR=/pd/results harness/run_bench.sh Ap B1 N0 random inf --max-concurrency 1 --num-prompts 8 --random-input-len 1024 --random-output-len 256; python3 harness/analyze.py results/*_Ap_B1_N0_random_rinf/bench.json | tail -1 | cut -f9,10; }
+step() { cd ~/pd && MODEL=$1 BASE_URL=http://127.0.0.1:8000 RESULTS_DIR=/pd/results harness/run_bench.sh Ap B1 N0 random inf --max-concurrency 1 --num-prompts 8 --random-input-len 1024 --random-output-len 256; python3 analysis/analyze.py results/*_Ap_B1_N0_random_rinf/bench.json | tail -1 | cut -f9,10; }
 ```
 ## 2. 모델별 (각 8~10분: 다운로드 포함)
 | 순서 | 모델 | 명령 | 기록 |

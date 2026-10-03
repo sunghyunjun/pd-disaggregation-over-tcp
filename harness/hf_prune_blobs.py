@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Delete blobs in ~/.cache/huggingface/hub/blobs that no model snapshot references (new hf CLI stores
-all blobs in one shared dir; deleting a partial model dir leaves its blobs behind). Session A' lesson."""
+all blobs in one shared dir; deleting a partial model dir leaves its blobs behind). Lesson from round A'."""
 import os, glob
 hub=os.path.expanduser("~/.cache/huggingface/hub"); blobs=os.path.join(hub,"blobs")
 ref={os.path.realpath(l) for l in glob.glob(os.path.join(hub,"models--*","snapshots","*","**"), recursive=True) if os.path.islink(l)}

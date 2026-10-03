@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E2b · g7e 쌍에서 입력 길이 축 확장(16K)과 실제 트레이스 — 이미 떠 있는 쌍을 재사용
+# E2b · input-length axis extension (16K) and the real trace on the g7e pair, reusing the pair already running
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 : "${A_PRIV:?}" "${B_PRIV:?}"
@@ -28,10 +28,10 @@ serve_p1(){ pkill -f "rr_proxy|toy_proxy" 2>/dev/null; sleep 1
   [ "$(health $A_PRIV 8100)" = 200 ] && [ "$(health $B_PRIV 8200)" = 200 ] || return 1
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$MAIN CHUNK=2560 PREFIX=$1; }
 
-log "E2b-1 입력 16K (prefix off): B2 대 P1"
+log "E2b-1 input 16K (prefix off): B2 vs P1"
 serve_b2 off && for r in 0.25 0.5; do log "  B2 16K r$r"; bench E2 B2 N0 random $r --random-input-len 16384 --random-output-len 512; done
 serve_p1 off && for r in 0.25 0.5; do log "  P1 16K r$r"; bench E2 P1tuned N0 random $r --random-input-len 16384 --random-output-len 512; xfer; done
-log "E2b-2 Azure 대화 트레이스 실시간 (prefix on): B2 대 P1"
+log "E2b-2 Azure conversation trace in real time (prefix on): B2 vs P1"
 serve_b2 on && { log "  B2 azure"; TRACE_SEC_MULT=0.001 NUM_PROMPTS=600 bench E2 B2 N0 azure_conv self; }
 serve_p1 on && { log "  P1 azure"; TRACE_SEC_MULT=0.001 NUM_PROMPTS=600 bench E2 P1tuned N0 azure_conv self; xfer; }
 pkill -f "rr_proxy|toy_proxy" 2>/dev/null; for h in $A_PRIV $B_PRIV; do rsh $h "docker rm -f vllm >/dev/null 2>&1"; done

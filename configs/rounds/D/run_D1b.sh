@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# D-1b 재시도 · 호스트 버퍼(kv_buffer_device=cpu)
-# 마찰 #10: g7.2xlarge는 호스트 메모리 30 GiB뿐. KV 미러 8.7 GiB + 가중치 로드로 OOM(dmesg oom-kill 확인).
-# 대응: GPU 점유율을 낮춰 KV 캐시(=호스트 미러)를 줄인다. 같은 조건의 GPU 등록 대조군도 함께 측정.
+# D-1b retry · host buffer (kv_buffer_device=cpu)
+# Friction #10: g7.2xlarge has only 30 GiB of host memory. KV mirror 8.7 GiB + weight loading hit OOM (dmesg oom-kill confirmed).
+# Response: lower GPU memory utilization to shrink the KV cache (= the host mirror). Also measure a GPU-registration control under the same condition.
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 : "${A_PRIV:?}" "${B_PRIV:?}"
@@ -26,24 +26,24 @@ serve_p1(){ local tag=$1
   local hb=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://$B_PRIV:8200/health)
   echo "    health A=$ha B=$hb"
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$MAIN CHUNK=2560 PREFIX=off
-  [ "$ha" = 200 ] && [ "$hb" = 200 ] || { echo "    SKIP: 서버가 준비되지 않음"; return 1; }
+  [ "$ha" = 200 ] && [ "$hb" = 200 ] || { echo "    SKIP: servers not ready"; return 1; }
 }
 points(){ bench D "$1" N0 random 0.25 --random-input-len 4096 --random-output-len 512; xfer
           bench D "$1" N0 random 1    --random-input-len 4096 --random-output-len 512; xfer; }
 
-log "D1b1 대조군: GPU 등록, 점유율 0.70 (호스트 버퍼와 같은 KV 용량)"
+log "D1b1 control: GPU registration, utilization 0.70 (same KV capacity as the host buffer)"
 unset UCX_EXTRA KV_BUFFER_DEVICE NIXL_THREADS BLOCK; export GPU_UTIL=0.70
 serve_p1 ctl && points d1b_ctl_gpu; mem
 
-log "D1b2 호스트 버퍼, 점유율 0.70"
+log "D1b2 host buffer, utilization 0.70"
 export KV_BUFFER_DEVICE=cpu GPU_UTIL=0.70
 serve_p1 host && points d1b_host; mem
 
-log "D1b3 호스트 버퍼 + UCX 노브"
+log "D1b3 host buffer + UCX knobs"
 export UCX_EXTRA="UCX_TLS=tcp,cuda_copy,cuda_ipc UCX_NET_DEVICES=all UCX_TCP_TX_SEG_SIZE=256k UCX_TCP_RX_SEG_SIZE=256k UCX_TCP_MAX_IOV=16 UCX_TCP_MAX_POLL=-1 UCX_TCP_SNDBUF=8m UCX_TCP_RCVBUF=8m UCX_RNDV_FRAG_SIZE=host:4M,cuda:8M"
 serve_p1 hostucx && points d1b_host_ucx; mem
 
-log "D1b4 호스트 버퍼 + UCX 노브 + 스레드 16"
+log "D1b4 host buffer + UCX knobs + 16 threads"
 export NIXL_THREADS=16
 serve_p1 hostucxth && points d1b_host_ucx_th16; mem
 

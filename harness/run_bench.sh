@@ -40,11 +40,11 @@ fi
 ( while true; do echo "$(date -u +%s) $(curl -s ${METRICS_URL:-$BASE_URL/metrics} | grep -E '^vllm:(num_requests_(running|waiting)|kv_cache_usage_perc|gpu_cache_usage_perc)' | tr '\n' ' ')"; sleep 1; done > "$OUT/prom.txt" ) & PROM=$!
 trap 'kill $SAR $DMON $PROM 2>/dev/null || true' EXIT
 
-# 32K input + 512 output would exceed max-model-len 32768 -> clamp input to 32000 (session B finding)
-# 접두어 캐시 오염 방지(마찰 #11): 측정 직전 서버 캐시를 리셋한다.
-#   RESET_URLS="http://A:8100 http://B:8200"  — 비어 있으면 건너뜀(구버전 호환)
+# 32K input + 512 output would exceed max-model-len 32768 -> clamp input to 32000 (round B finding)
+# Prevent prefix-cache contamination (friction #11): reset the server caches right before measuring.
+#   RESET_URLS="http://A:8100 http://B:8200"   skipped when empty (compatible with older rounds)
 if [ -n "${RESET_URLS:-}" ]; then
-  harness/reset_caches.sh $RESET_URLS || echo "    경고: 캐시 리셋 일부 실패 — 결과 해석 시 주의"
+  harness/reset_caches.sh $RESET_URLS || echo "    warning: some cache resets failed; interpret results with care"
 fi
 ARGS=(); while [ $# -gt 0 ]; do if [ "$1" = "--random-input-len" ] && [ "${2:-}" = "32768" ]; then ARGS+=(--random-input-len 32000); shift 2; else ARGS+=("$1"); shift; fi; done; set -- "${ARGS[@]}"
 vllm bench serve --backend vllm --base-url "$BASE_URL" --model "$MODEL" ${TOKENIZER:+--tokenizer "$TOKENIZER"} \

@@ -1,6 +1,6 @@
 # RESULTS.md: reader's guide (English)
 
-`RESULTS.md` is the lab notebook of this study, written in Korean during the measurement rounds. It is kept as written: it is the record that the pre-registered predictions were committed before the last round (private commit 8775497, public commit b220463), and the technical report's Appendix D and E point to it. This file explains its structure and translates the one part a reader is most likely to need, the predictions for the last round. Numbers in the report come from the scripts in `harness/`, not from this notebook.
+`RESULTS.md` is the lab notebook of this study, written in Korean during the measurement rounds. It is kept as written: it is the record that the pre-registered predictions were committed before the last round (private commit 8775497, public commit b220463), and the technical report's Appendix D and E point to it. This file explains its structure and translates the one part a reader is most likely to need, the predictions for the last round. Numbers in the report come from the scripts in `analysis/`, not from this notebook.
 
 ## Structure
 

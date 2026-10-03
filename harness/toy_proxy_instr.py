@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-# 세션 E8(B2): vLLM v0.30.0 tests/v1/kv_connector/nixl_integration/toy_proxy_server.py 사본에 계측만 더했다.
-# 달라진 곳은 세 군데(표시 "E8 계측"): proxy_trace import, lifespan 시작·종료, 디코드 스트림 조각마다 tick().
-# PROXY_TRACE 환경변수가 없으면 원본과 동작이 같다. 세션 E5~E7은 원본을 썼다.
+# Round E8 (B2): a copy of vLLM v0.30.0 tests/v1/kv_connector/nixl_integration/toy_proxy_server.py with instrumentation added and nothing else.
+# Three places differ (marked "E8 instrumentation"): the proxy_trace import, lifespan start and stop, and tick() on every decode stream chunk.
+# Without the PROXY_TRACE environment variable the behavior is identical to the original. Rounds E5 to E7 used the original.
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 
 import argparse
@@ -15,9 +15,9 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 
-import sys  # E8 계측
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # E8 계측
-import proxy_trace as pt  # noqa: E402  E8 계측
+import sys  # E8 instrumentation
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # E8 instrumentation
+import proxy_trace as pt  # noqa: E402  E8 instrumentation
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -79,11 +79,11 @@ async def lifespan(app: FastAPI):
         f"and {len(app.state.decode_clients)} decode clients."
     )
 
-    _pt_tasks = pt.start()  # E8 계측
+    _pt_tasks = pt.start()  # E8 instrumentation
     yield
-    for _t in _pt_tasks:  # E8 계측
+    for _t in _pt_tasks:  # E8 instrumentation
         _t.cancel()
-    pt.flush()  # E8 계측
+    pt.flush()  # E8 instrumentation
 
     # Shutdown: Close all clients
     for client_info in app.state.prefill_clients:
@@ -223,9 +223,9 @@ async def stream_service_response(
         "POST", endpoint, json=req_data, headers=headers
     ) as response:
         response.raise_for_status()
-        with pt.Stream(request_id) as _s:  # E8 계측
+        with pt.Stream(request_id) as _s:  # E8 instrumentation
             async for chunk in response.aiter_bytes():
-                _s.tick()  # E8 계측
+                _s.tick()  # E8 instrumentation
                 yield chunk
 
 

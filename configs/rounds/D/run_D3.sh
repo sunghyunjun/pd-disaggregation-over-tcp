@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 세션 D-3 · 튜닝 설정으로 ShareGPT 요청률 사다리 재측정 (세션 B 표와 직접 비교) + 32K 재시도
+# Round D-3 · ShareGPT request-rate ladder re-measured with the tuned settings (direct comparison with the round B table) + 32K retry
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 : "${A_PRIV:?}" "${B_PRIV:?}"
@@ -25,10 +25,10 @@ serve_p1(){ local tag=$1
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$MAIN CHUNK=2560 PREFIX=$2
   [ "$ha" = 200 ] && [ "$hb" = 200 ] || { echo "    SKIP"; return 1; }
 }
-log "D3a 튜닝 설정 ShareGPT 사다리 (prefix on, 세션 B E2와 동일 조건)"
+log "D3a tuned settings ShareGPT ladder (prefix on, same condition as round B E2)"
 serve_p1 ladder on && for r in 1 4 6 8 12; do log "  rate $r"; bench D p1_tuned N0 sharegpt $r; xfer; done
 
-log "D3b 튜닝 설정 32K (prefix off) — 프리필 포화 구간에서 전송 개선이 통하는지"
+log "D3b tuned settings 32K (prefix off): does the transfer improvement hold in the prefill-saturated region"
 serve_p1 long off && for r in 0.25 0.5; do log "  32K rate $r"; bench D p1_tuned N0 random $r --random-input-len 32000 --random-output-len 512; xfer; done
 
 pkill -f toy_proxy 2>/dev/null; for h in $A_PRIV $B_PRIV; do rsh $h "docker rm -f vllm >/dev/null 2>&1"; done

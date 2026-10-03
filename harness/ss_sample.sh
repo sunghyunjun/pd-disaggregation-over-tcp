@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 세션 E8(B3): P–D 사이 TCP 연결 수와 연결별 전송량을 샘플링한다(KV 전송이 몇 개의 연결로 나가는지 확인).
-# 사용: ss_sample.sh start PEER_IP OUT_FILE [INTERVAL_S(0.1)] | ss_sample.sh stop
-# 출력: 샘플마다 "# <epoch.ns>" 줄 다음에 `ss -tinH dst PEER_IP`의 원문(연결별 bytes_acked·bytes_received·delivery_rate 포함).
-# 분석은 오프라인에서 한다(harness/ss_parse.py). ssh(22)·iperf(5201)·NIXL 사이드 채널(5600)은 분석 단계에서 뺀다.
+# Round E8 (B3): sample the number of TCP connections between P and D and the bytes carried by each (to see how many connections the KV transfer uses).
+# Usage: ss_sample.sh start PEER_IP OUT_FILE [INTERVAL_S(0.1)] | ss_sample.sh stop
+# Output: for every sample, a "# <epoch.ns>" line followed by the raw output of `ss -tinH dst PEER_IP` (includes bytes_acked, bytes_received and delivery_rate per connection).
+# Analysis happens offline (analysis/ss_parse.py). ssh (22), iperf (5201) and the NIXL side channel (5600) are excluded at the analysis stage.
 set -u
 case "${1:-}" in
 start)

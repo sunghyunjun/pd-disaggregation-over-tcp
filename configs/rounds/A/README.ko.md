@@ -35,7 +35,7 @@ KV bytes/token 확인: `docker logs vllm | grep -i "GPU KV cache size\|Maximum c
 ## 2. 단일 스텝 시간 → SLO 확정 (5분)
 ```bash
 harness/run_bench.sh A B1 N0 random inf --max-concurrency 1 --num-prompts 20 --random-input-len 1024 --random-output-len 512
-python3 harness/analyze.py results/*_A_B1_N0_random_rinf/bench.json      # tbt_p50_ms = 단일 스텝
+python3 analysis/analyze.py results/*_A_B1_N0_random_rinf/bench.json      # tbt_p50_ms = 단일 스텝
 # SLO: chat tbt = 5×step, doc tbt = 25×step  → export SLO_CHAT_TBT SLO_DOC_TBT (ms), analyze.py --slo 에 사용
 ```
 
@@ -43,7 +43,7 @@ python3 harness/analyze.py results/*_A_B1_N0_random_rinf/bench.json      # tbt_p
 ```bash
 for r in 0.5 1 2 4 6 8; do harness/run_bench.sh A B1 N0 sharegpt $r; done
 harness/run_bench.sh A B1 N0 sharegpt inf --num-prompts 300              # 최대 처리량 참고값
-python3 harness/analyze.py results/*_A_B1_N0_sharegpt_*/bench.json --slo chat=ttft:1000,tbt:$SLO_CHAT_TBT --slo doc=ttft:3000,tbt:$SLO_DOC_TBT --csv results/A_sharegpt_c2048.csv
+python3 analysis/analyze.py results/*_A_B1_N0_sharegpt_*/bench.json --slo chat=ttft:1000,tbt:$SLO_CHAT_TBT --slo doc=ttft:3000,tbt:$SLO_DOC_TBT --csv results/A_sharegpt_c2048.csv
 ```
 SLO가 깨지는 요청률이 8 밑에서 안 보이면 12, 16 추가. 0.5에서 이미 깨지면 0.25 추가.
 

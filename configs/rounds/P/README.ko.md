@@ -67,7 +67,7 @@ docker logs vllm 2>&1 | grep -i -E "nixl|transfer|kv_transfer" | tail -5     # A
 mkdir -p ~/.local/bin && ln -sf ~/pd/harness/vllm-docker.sh ~/.local/bin/vllm && export PATH=~/.local/bin:$PATH
 export MODEL=Qwen/Qwen3-1.7B BASE_URL=http://127.0.0.1:8000 RESULTS_DIR=/pd/results ENV_JSON=/pd/results/env_P_A.json
 cd ~/pd && harness/run_bench.sh P P1 N0 random 1 --random-input-len 1024 --random-output-len 128 --num-prompts 60
-python3 harness/analyze.py results/*_P_P1_*/bench.json
+python3 analysis/analyze.py results/*_P_P1_*/bench.json
 ```
 통과: result.json 생성, analyze 표 출력, prom.txt/sar.txt/dmon.txt가 비어 있지 않음. bench serve가 컨테이너 안에서 프록시(호스트 8000)에 닿는지가 포인트(--network host라 됨).
 

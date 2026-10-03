@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Write-up figures from safe data only (results/safe_runs.csv, safety 안전/주의).
+"""Shared figure style, CSV loading, and the per-run-summary figures (fig01 to fig14) drawn from
+results/safe_runs.csv (safety labels 안전 = safe and 주의 = caution only).
 
-Usage:
-  uv run --with matplotlib python3 harness/make_figures.py [-o paper/figures]
+Library for analysis/make_figures.py, which is the entry point that writes paper/figures. fig01 opens the
+report (system percentiles against per-request attainment); fig02, fig05 to fig11, fig13, and fig14 are the
+earlier-round figures of Appendix A; fig03, fig04, and fig12 are superseded by fig_results.py and are kept for
+reference. Running this module directly draws all fourteen into -o (default paper/figures) with the pre-E8
+legend defaults.
 
-Writes <name>.pdf and <name>.svg per figure plus figures.json (numbers behind
-each figure). Values quoted from RESULTS.md tables (network and transfer
-decomposition) are marked in figures.json under "quoted".
+Each figure is written as <name>.pdf and <name>.svg, and its numbers are collected in META for figures.json.
+Values quoted from RESULTS.md tables (network and transfer decomposition) are marked in figures.json under
+"quoted".
 """
 import argparse, csv, json, os, statistics as st
 from collections import defaultdict
@@ -38,11 +42,11 @@ plt.rcParams.update({
 })
 
 META = {}
-# 원고 v3용 스위치(기본값은 이전과 같은 그림). make_figures_v3.py가 켠다.
-REP_SUFFIX = ""          # 예: ", chunk 2,560" → 범례 "Replicas (2), chunk 2,560"
+# Switches set by make_figures.py (the defaults reproduce the earlier form of the figures).
+REP_SUFFIX = ""          # e.g. ", chunk 2,560" gives the legend entry "Replicas (2), chunk 2,560"
 F08_NOTE = "hollow marker: client-limited, not used for verdicts"
 F06_TITLE = "4K input at 1 req/s: replicas hold only with a fast GPU and light weights"
-MARK_CAUTION = False  # True면 주의 런이 섞인 막대(f06, f10)를 빗금으로 표시
+MARK_CAUTION = False  # True hatches bars (f06, f10) that include a caution run
 
 
 def rep(n):

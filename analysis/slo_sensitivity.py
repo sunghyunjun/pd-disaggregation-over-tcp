@@ -6,12 +6,17 @@ Usage:
 
 Steps:
   1. Cache per-request arrays (ttft, max ITL, e2e, output length, error) of every safe/caution run in
-     results/per_request.json.gz, so later analyses do not reparse ~2 GB of bench JSON.
+     results/per_request.json.gz, so later analyses do not reparse ~2 GB of bench JSON. load_cache() is the
+     shared entry point used by decisive_ci.py, boundary_model.py, and make_figures.py; it rebuilds the cache
+     when it no longer matches safe_runs.csv.
   2. SLO sensitivity: for a grid of TTFT budgets x per-request max-ITL budgets, compute each config's
      SLO goodput capacity = max over rates of (SLO-meeting output tok/s per GPU), using the minimum over
-     repeats at each rate. Compare disaggregated vs replicas as a ratio (fig15, sensitivity.json).
+     repeats at each rate. Compare disaggregated vs replicas as a ratio (fig15, fig17, sensitivity.json).
+     sensitivity() with merge_families=True is what make_figures.py uses for the who-wins figure (Section 5.2).
   3. SLO-free frontier: output tok/s per GPU vs request-level p90 TTFT and p90 of per-request max ITL
      (fig16).
+  fig15 to fig17 and sensitivity.json are exploratory outputs of running this module directly; they are not part
+  of the committed figure set.
 """
 import argparse, csv, glob, gzip, json, math, os, sys
 from collections import defaultdict
@@ -49,7 +54,8 @@ def build_cache(safe_csv):
 
 
 def load_cache(safe_csv, rebuild=False):
-    """캐시가 safe_runs.csv(안전·주의 런과 그 등급)와 어긋나면 다시 만든다(3차 모의 심사 A16-1: 조용한 불일치 방지)."""
+    """Rebuild the cache when it disagrees with safe_runs.csv (the set of safe and caution runs and their labels);
+    added after the third mock review (A16-1) to prevent a silent mismatch."""
     if rebuild or not os.path.exists(CACHE):
         return build_cache(safe_csv)
     cache = json.load(gzip.open(CACHE, "rt"))
@@ -69,7 +75,7 @@ def load_cache(safe_csv, rebuild=False):
 def goodput(run, T, B):
     tok = 0
     for t, m, ol, e in zip(run["ttft"], run["maxitl"], run["outlen"], run["err"]):
-        if not e and t <= T and (m is None or m * 1000 <= B):   # 1토큰 출력(간격 없음)은 간격 조건 통과(2026-09-30 수정)
+        if not e and t <= T and (m is None or m * 1000 <= B):   # a one-token output has no gaps and passes the gap condition (fixed 2026-09-30)
             tok += ol
     return tok / run["duration"]
 
@@ -93,7 +99,8 @@ GROUPS = [
       ("1P1D", ("E5", "E7"), "26_1P1D", "random", "4096", 2),
       ("1P2D", ("E5", "E7"), "26_1P2D", "random", "4096", 3),
       ("2P1D", ("E5", "E7"), "26_2P1D", "random", "4096", 3)]),
-    # 세션 E8: 복제본 청크 변형을 넣은 비교(복제본 쪽 최선 = 청크를 조정한 복제본). 라벨이 "Replicas"로 시작하면 복제본 쪽.
+    # Round E8: comparison that includes the replica chunk variants (best replica = chunk-tuned replicas).
+    # A label that starts with "Replicas" belongs to the replica side.
     ("26b_4k_tuned", "26B NVFP4 · 4K\nchunk-tuned replicas",
      [("Replicas c2560 (2)", ("E5", "E7"), "26_B2", "random", "4096", 2),
       ("Replicas c2560 (2) E8", ("E8",), "26_B2_c2560", "random", "4096", 2),
@@ -189,9 +196,11 @@ def supported(by_rate, gpus, T, B):
     return s
 
 
-# 같은 서빙 구성(모델·청크·UCX 설정 동일)을 프록시·세션별로 나눈 멤버 묶음. 3차 모의 심사 B6:
-# 절단(최고 측정 요청률에서도 통과) 판정만 묶음 전체의 최고 측정 요청률로 한다. 달성률과 굿풋은 멤버별 그대로.
-# 예: 26B 1P1D(P 청크 2,560)는 시험 프록시로 GPU당 6을 재서 무너졌으므로, aiohttp 변형의 GPU당 5 통과는 절단이 아니다.
+# Families: members that are the same serving configuration (same model, chunk, and UCX settings) split by proxy
+# or round. Third mock review, B6: only the censoring decision (still passing at the highest measured rate) uses
+# the highest rate measured anywhere in the family. Attainment and goodput stay per member.
+# Example: 26B 1P1D (prefill chunk 2,560) was measured at 6 requests/s per GPU with the test proxy and failed there,
+# so the aiohttp variant passing at 5 per GPU is not censored.
 FAMILIES = {
     "26b_4k_tuned": [["Replicas c2560 (2)", "Replicas c2560 (2) E8"], ["Replicas c1024 (2)", "Replicas c1024 (2) E9"],
                      ["1P1D", "1P1D aio", "1P1D toy E8"]],
@@ -201,7 +210,7 @@ FAMILIES = {
 
 
 def sensitivity(cache, merge_families=False):
-    """merge_families=False는 v2까지의 판정과 같다(멤버마다 따로 절단 판정)."""
+    """merge_families=False reproduces the verdicts before the third mock review (censoring decided per member)."""
     res = {}
     for key, title, members in GROUPS:
         g = {"title": title, "members": {}}
@@ -292,7 +301,7 @@ def figures(res, cache, out):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
-    import make_figures as mf  # shared style
+    import fig_common as mf  # shared style (this module used to be make_figures.py)
     INK, INK2 = mf.INK, mf.INK2
 
     cmap = LinearSegmentedColormap.from_list("div", ["#1d4f91", "#8fb3dd", "#ebe9e4", "#eeb08c", "#c8501e"])

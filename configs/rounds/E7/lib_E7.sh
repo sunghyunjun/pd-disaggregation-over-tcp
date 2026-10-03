@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# 세션 E7 공통 함수. run_E7a.sh(두 대·한 대)와 run_E7b.sh(세 대)가 source 한다.
-# 새로 넣은 것: 서버 기동 뒤 워밍업 30요청(프로토콜 이행), 지점당 제한 시간 25분, 반복 측정용 시드 규칙.
+# Round E7 shared functions. Sourced by run_E7a.sh (two nodes and one node) and run_E7b.sh (three nodes).
+# New here: a 30-request warm-up after server start (protocol compliance), a 25-minute time limit per point, a seed rule for repeated measurements.
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 ulimit -n 65536 2>/dev/null || true
@@ -20,9 +20,9 @@ health(){ curl -s -o /dev/null -w "%{http_code}" --max-time 10 "http://$1:$2/hea
 DECODERS=""; CFG=""; ALL=${ALL:-}
 stop_all(){ pkill -f "[r]r_proxy.py|[t]oy_proxy_server" 2>/dev/null; for h in $ALL; do rsh $h "docker rm -f vllm >/dev/null 2>&1"; done; sleep 2; }
 
-# 워밍업: 기동 직후 첫 요청들의 첫 토큰이 평소의 약 30배라(9/28 점검) 기록하지 않는 30요청으로 데운다
+# Warm-up: right after start the first requests' TTFT is about 30x normal (checked 9/28), so warm with 30 unrecorded requests
 warm(){ vllm bench serve --backend vllm --base-url "$BASE_URL" --model "$MODEL" --dataset-name sharegpt --dataset-path "$SHAREGPT_JSON" \
-          --num-prompts 30 --request-rate 4 --seed 999 >/dev/null 2>&1; log "  [$CFG] 워밍업 30요청 완료"; }
+          --num-prompts 30 --request-rate 4 --seed 999 >/dev/null 2>&1; log "  [$CFG] warm-up of 30 requests done"; }
 
 serve_rep(){ CFG=$1; local M=$2; shift 2; stop_all; DECODERS=""
   for h in "$@"; do rsh $h "CHUNK=2560 PREFIX=off PORT=8100 GPU_UTIL=${GPU_UTIL_OVERRIDE:-0.90} harness/serve.sh $M" >/dev/null & done; wait
@@ -48,24 +48,24 @@ serve_pd(){ CFG=$1; local M=$2 P="$3" D="$4"; stop_all; DECODERS="$D"
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$first:8100/metrics MODEL=$M CHUNK=2560 PREFIX=off
   RESET_URLS=""; for h in $P; do RESET_URLS="$RESET_URLS http://$h:8100"; done; for h in $D; do RESET_URLS="$RESET_URLS http://$h:8200"; done; export RESET_URLS; warm; }
 
-# 단일 노드(프록시 없이 직접). GPU_UTIL로 KV 용량을 맞춘다
+# Single node (direct, no proxy). KV capacity is matched via GPU_UTIL
 serve_single(){ CFG=$1; local M=$2 H=$3 U=$4; stop_all; DECODERS=""
   rsh $H "CHUNK=2560 PREFIX=off PORT=8100 GPU_UTIL=$U harness/serve.sh $M" >/dev/null
   local c; c=$(health $H 8100); log "  [$CFG] health ${H##*.}=$c util=$U"; [ "$c" = 200 ] || return 1
   export BASE_URL=http://$H:8100 METRICS_URL=http://$H:8100/metrics MODEL=$M CHUNK=2560 PREFIX=off RESET_URLS="http://$H:8100"; warm; }
 
-# 한 지점: pt 워크로드 요청률 반복번호 [추가 인자]. 시드 = 지점 기본값 + 1000 × 반복번호(0회차는 E5와 같은 시드)
+# One point: pt WORKLOAD RATE REP [extra args]. Seed = point base + 1000 × REP (rep 0 uses the same seed as E5)
 pt(){ local WL=$1 R=$2 REP=$3; shift 3; local t0; t0=$(date -u +%s)
   local base; base=$(python3 -c "print(int(float('$R')*1000)+(7 if '$WL'=='random' else 0))")
   log "  $CFG $WL r$R #$REP"
   SEED=$((base+1000*REP)) timeout 1500 harness/run_bench.sh E7 "$CFG" N0 "$WL" "$R" "$@" 2>&1 \
     | grep -E "Successful requests|Median TTFT|wrote|rror" | grep -vE "Triton|_C_AVX512|^\s*Error [1-9]" | sed 's/^/    /'
   for h in $DECODERS; do rsh $h "docker logs vllm --since $t0 2>&1 | grep 'KV Transfer metrics'" > results/xfer_E7/${CFG}_${WL}_r${R}_n${REP}_${h##*.}.log 2>/dev/null; done; }
-rep3(){ local k; for k in 0 1 2; do pt "$@" $k; done; }                 # rep3 워크로드 요청률 → 세 번
+rep3(){ local k; for k in 0 1 2; do pt "$@" $k; done; }                 # rep3 WORKLOAD RATE -> three times
 pt3(){ local WL=$1 R=$2; shift 2; local k; for k in 0 1 2; do pt $WL $R $k "$@"; done; }
 
-# 실제 트레이스 재생(캐시 끔). MULT 0.001 = 실시간, 작을수록 빠르게. 요청 수는 이전 세션(B·D·E2)과 같은 앞쪽 600개
-# (NUM_PROMPTS를 비우면 0이 넘어가 vLLM 0.30.0에서 빈 목록 IndexError — 9/28 E7b 첫 시도에서 확인)
+# Real trace replay (cache off). MULT 0.001 = real time, smaller is faster. Request count is the same first 600 as the earlier rounds (B, D, E2)
+# (an empty NUM_PROMPTS passes 0 and vLLM 0.30.0 raises IndexError on the empty list; seen on the first E7b attempt, 9/28)
 trace1(){ local MULT=$1 REP=$2; local t0; t0=$(date -u +%s); log "  $CFG azure_conv ×$MULT #$REP"
   SEED=$((4242+1000*REP)) TRACE_SEC_MULT=$MULT NUM_PROMPTS=600 timeout 1500 harness/run_bench.sh E7 "$CFG" N0 azure_conv self 2>&1 \
     | grep -E "Successful requests|Median TTFT|wrote|rror" | grep -vE "Triton|_C_AVX512|^\s*Error [1-9]" | sed 's/^/    /'

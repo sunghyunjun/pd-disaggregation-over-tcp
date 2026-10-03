@@ -1,4 +1,4 @@
-*English translation of `sat_A.md`; the Korean file is the original.*
+*English translation of `README.ko.md`; the Korean file is the original. Commands below use the flat `configs/` layout of the time (see `configs/README.md`).*
 
 # Saturday round A command sheet (g7.2xlarge ×1, RTX PRO 4500 32GB, 8 vCPU quota), revised 9/24
 
@@ -37,7 +37,7 @@ KV bytes/token check: `docker logs vllm | grep -i "GPU KV cache size\|Maximum co
 ## 2. Single decode step time → fix the SLO (5 minutes)
 ```bash
 harness/run_bench.sh A B1 N0 random inf --max-concurrency 1 --num-prompts 20 --random-input-len 1024 --random-output-len 512
-python3 harness/analyze.py results/*_A_B1_N0_random_rinf/bench.json      # tbt_p50_ms = single decode step
+python3 analysis/analyze.py results/*_A_B1_N0_random_rinf/bench.json      # tbt_p50_ms = single decode step
 # SLO: chat tbt = 5×step, doc tbt = 25×step  → export SLO_CHAT_TBT SLO_DOC_TBT (ms), used by analyze.py --slo
 ```
 
@@ -45,7 +45,7 @@ python3 harness/analyze.py results/*_A_B1_N0_random_rinf/bench.json      # tbt_p
 ```bash
 for r in 0.5 1 2 4 6 8; do harness/run_bench.sh A B1 N0 sharegpt $r; done
 harness/run_bench.sh A B1 N0 sharegpt inf --num-prompts 300              # maximum throughput reference value
-python3 harness/analyze.py results/*_A_B1_N0_sharegpt_*/bench.json --slo chat=ttft:1000,tbt:$SLO_CHAT_TBT --slo doc=ttft:3000,tbt:$SLO_DOC_TBT --csv results/A_sharegpt_c2048.csv
+python3 analysis/analyze.py results/*_A_B1_N0_sharegpt_*/bench.json --slo chat=ttft:1000,tbt:$SLO_CHAT_TBT --slo doc=ttft:3000,tbt:$SLO_DOC_TBT --csv results/A_sharegpt_c2048.csv
 ```
 If the request rate at which the SLO breaks does not appear below 8, add 12 and 16. If it already breaks at 0.5, add 0.25.
 

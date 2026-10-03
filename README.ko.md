@@ -52,7 +52,7 @@ PROTOCOL.md 사전 등록 프로토콜 v1.7(첫 측정 전 커밋, 한국어 원
 
 ## 보고서 수치와 그림 재현
 
-`aggregate.py`, `safe_runs.py`, `chunk31_buckets.py`, `make_figures.py`(E8·E9의 전송 로그와 소켓 표본)는 런별 원자료를 읽으므로, 먼저 릴리즈 자산(`results-<회차>.tar.gz`, 체크섬 `SHA256SUMS.txt`)을 `results/<회차>/`에 풉니다. `boundary_model.py`와 `decisive_ci.py`는 커밋된 `safe_runs.csv`와 `per_request.json.gz`만으로 돕니다.
+`aggregate.py`, `safe_runs.py`, `chunk31_buckets.py`, `make_figures.py`(E8의 전송 로그와 소켓 표본)는 런별 원자료를 읽으므로, 먼저 릴리즈 자산(`results-<회차>.tar.gz`, 체크섬 `SHA256SUMS.txt`)을 `results/<회차>/`에 풉니다. `boundary_model.py`와 `decisive_ci.py`는 커밋된 `safe_runs.csv`와 `per_request.json.gz`만으로 돕니다.
 
 ```
 python3 analysis/aggregate.py results/ -o results/all_runs.csv                 # 모든 런, 기본값이 보고서의 SLO
@@ -70,7 +70,7 @@ cd paper/en && tectonic main.tex && cp main.pdf ../main.pdf                     
 
 한 사람이 클라우드 비용 약 270달러로 아홉 회차 455런을 돌렸습니다. 프로토콜은 첫 런 전에, 마지막 회차의 예측은 그 회차 전에 커밋했습니다(부록 D, E). AI의 도움을 받은 모의 동료 심사 네 차례가 `paper/reviews/`에 있고, 앞의 두 차례가 추가 측정 두 회차를 이끌었으며 네 번째는 6절의 모델을 검토했습니다. AI 코딩 도우미(Claude)가 하네스와 분석 스크립트를 쓰고, 인프라를 운영하고, 모의 심사를 돌리고, 본문과 그림 초안을 만들었습니다. 저자는 연구를 설계하고, 측정 비용을 내고 방향을 정하고, 보고한 수치를 원자료와 대조했습니다.
 
-이 공개 저장소의 유래: 비공개 작업 저장소의 이력에서 AWS 계정 ID, 로컬 경로, 개인 작업 공간 이름을 치환하거나 지우고, 런별 원자료 폴더와 내부 메모 폴더, 낡은 초안, 내부 할 일 파일을 빼고, 커밋 메시지의 도구 세션 꼬리말을 지우고, 저자 이메일을 하나로 맞췄습니다(`git filter-repo`). `commit-map.txt`가 옛 해시와 새 해시를 대응시킵니다. 원본 저장소의 번들은 저자가 보관하며, SHA-256은 보고서 부록 G에 있습니다.
+이 공개 저장소의 유래: 비공개 작업 저장소의 이력에서 AWS 계정 ID, 로컬 경로, 개인 작업 공간 이름을 치환하거나 지우고, 런별 원자료 폴더와 내부 메모 폴더, 낡은 초안, 내부 할 일 파일을 빼고, 커밋 메시지의 도구 세션 꼬리말을 지우고, 저자 이메일을 하나로 맞췄습니다(`git filter-repo`). 번들 기준 이후의 커밋은 독자를 위해 트리를 재배치하고 코드 주석을 영어로 옮긴 것이며, 데이터와 스크립트 논리는 바뀌지 않았습니다. `commit-map.txt`가 옛 해시와 새 해시를 대응시킵니다. 원본 저장소의 번들은 저자가 보관하며, SHA-256은 보고서 부록 G에 있습니다.
 
 ## 라이선스
 

@@ -1,25 +1,31 @@
 #!/usr/bin/env python3
-"""영어 원고 v2 그림(v1 스크립트 복사 + 세션 E9: 청크 512, 프록시 상한 해제 재측정, P 청크 8,192).
-원래 설명:
-영어 원고 v1(청크 프리필 × 분리) 그림. 기존 make_figures.py의 스타일과 함수를 재사용하고 새 그림을 더한다.
+"""Main-text result figures of the report, drawn from the per-request cache (results/per_request.json.gz) and the
+E8 and E9 transfer logs and socket samples. Covers the chunk sweep of E8 and the E9 additions (512-token chunk,
+replica proxy without the connection cap, 8,192-token prefill chunk).
 
-사용:
-  uv run --with matplotlib python3 harness/make_figures_v2.py [-o paper/figures_v2]
+Library for analysis/make_figures.py, which is the entry point that writes paper/figures (it reuses every
+function here except fig_h2h and fig_transfer, which fig_headtohead.py redefines). Running this module directly
+draws the earlier form of the set into -o (default paper/figures_v2, kept apart so that paper/figures is not
+overwritten).
 
-새 그림
-  v1_chunk_stall   청크 크기별 요청별 최대 토큰 간격(26B 4K, 31B 대화, 26B FP8 4K; GPU당 1건 이하)
-  v1_head_to_head  같은 GPU 수에서 청크 변형 복제본 대 1P1D의 달성률 곡선
-  v1_transfer      (a) iperf 흐름 수, (b) UCX 설정별 KV 전송률, (c) 전송 중 동시에 움직인 TCP 연결 수
-  v1_ttft          분리의 첫 토큰 추가 지연 분해
-  v1_who_wins      SLO 격자별 우열: 청크 2560 복제본 대비(위) / 청크를 조정한 복제본 대비(아래)
-  v1_proxy_gc      분리 구성의 전역 정지와 프록시 GC(toy 대 aiohttp)
-나머지(부록)는 make_figures.py의 함수를 같은 CSV로 다시 그린다.
+Figures
+  v1_chunk_stall   longest gap per request by chunk size (26B NVFP4 4K, 26B FP8 4K, 31B chat; at most 1 request/s
+                   per GPU) (Section 4.2)
+  v1_head_to_head  attainment against load, chunk-tuned replicas versus 1P1D at equal GPU count (Section 5.1)
+  v1_transfer      (a) bandwidth against iperf flow count, (b) KV transfer rate per UCX setting, (c) TCP connections
+                   moving data at the same time during a transfer (Section 4.3)
+  v1_ttft          decomposition of the first-token cost of disaggregation (Section 4.4)
+  v1_who_wins      verdict per SLO cell: against replicas at chunk 2,560 (top) and against chunk-tuned replicas
+                   (bottom) (Section 5.2)
+  v1_proxy_gc      global stalls of a disaggregated setup against proxy GC (vLLM's test proxy versus aiohttp)
+                   (Appendix B.1)
+The remaining figures (Appendix A) are redrawn from the same CSV with the functions in fig_common.py.
 """
 import argparse, glob, json, os, re, sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import fig_common as mf  # noqa: E402  (스타일·공통 함수)
+import fig_common as mf  # noqa: E402  (style and shared helpers)
 import slo_sensitivity as ss  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
@@ -27,7 +33,7 @@ from matplotlib.lines import Line2D  # noqa: E402
 INK, INK2, GRID = mf.INK, mf.INK2, mf.GRID
 S1, S2, S3, S4, S5 = mf.S1, mf.S2, mf.S3, mf.S4, mf.S5
 META = {}
-MIB = 1.048576  # vLLM의 "MB" = MiB
+MIB = 1.048576  # vLLM's "MB" is MiB
 
 
 def save(fig, out, name, meta):
@@ -173,7 +179,8 @@ def xfer_stats(pattern):
 
 
 def ss_active(path, thresh=64 * 1024):
-    """ss_sample 출력에서 전송 중(한 연결이라도 움직인 샘플) 동시에 움직인 연결 수의 분포"""
+    """From ss_sample output: distribution of how many connections moved data in the same sample, over the samples
+    in which at least one connection moved (that is, during a transfer)"""
     samples, cur, ts, key = [], {}, None, None
     rx = re.compile(r"^\S+\s+\d+\s+\d+\s+(\S+):(\d+)\s+(\S+):(\d+)")
     for line in open(path, errors="replace"):
@@ -369,7 +376,7 @@ def fig_proxy_gc(out, root="results/E8"):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", default="results/safe_runs.csv")
-    ap.add_argument("--rebuild", action="store_true", help="요청별 캐시를 항상 다시 만든다")
+    ap.add_argument("--rebuild", action="store_true", help="always rebuild the per-request cache")
     ap.add_argument("-o", "--out", default="paper/figures_v2")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
@@ -381,7 +388,7 @@ def main():
     fig_ttft(a.out)
     fig_who_wins(res, a.out)
     fig_proxy_gc(a.out)
-    # 부록: 기존 그림을 고친 CSV로 다시
+    # Appendix: redraw the earlier figures from the audited CSV
     rows = mf.load(a.csv)
     for f in (mf.f01, mf.f02, mf.f05, mf.f06, mf.f07, mf.f08, mf.f09, mf.f10, mf.f11, mf.f13, mf.f14):
         f(rows, a.out)

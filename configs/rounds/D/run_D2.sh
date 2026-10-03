@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# 세션 D-2 · (1) 수정된 대역폭 축, (2) D-1 최적 설정의 종단 이득
-# 마찰 #9 수정: burst = rate × 10 ms, 프리필(송신) 노드에만, 설정마다 iperf 검증
-# env: A_PRIV, B_PRIV, 그리고 최적 설정 BEST_UCX_EXTRA / BEST_KV_BUFFER_DEVICE / BEST_NIXL_THREADS / BEST_BLOCK
+# Round D-2 · (1) the corrected bandwidth axis, (2) end-to-end gain of the best D-1 settings
+# Friction #9 fix: burst = rate × 10 ms, on the prefill (sending) node only, iperf check for every setting
+# env: A_PRIV, B_PRIV, and the best settings BEST_UCX_EXTRA / BEST_KV_BUFFER_DEVICE / BEST_NIXL_THREADS / BEST_BLOCK
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 : "${A_PRIV:?}" "${B_PRIV:?}"
@@ -25,18 +25,18 @@ serve_p1(){ local tag=$1
   local hb=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://$B_PRIV:8200/health)
   echo "    health A=$ha B=$hb"
   export BASE_URL=http://127.0.0.1:8000 METRICS_URL=http://$A_PRIV:8100/metrics MODEL=$MAIN CHUNK=2560 PREFIX=off
-  [ "$ha" = 200 ] && [ "$hb" = 200 ] || { echo "    SKIP: 서버가 준비되지 않음"; return 1; }
+  [ "$ha" = 200 ] && [ "$hb" = 200 ] || { echo "    SKIP: servers not ready"; return 1; }
 }
 tc_set(){ local bw=$1; local burst=$(python3 -c "print(int(${bw%gbit}*1e9/8*0.01))")
   rsh $A_PRIV "IF=\$(ip -o -4 route show to default | awk '{print \$5}'); sudo tc qdisc replace dev \$IF root tbf rate $bw burst $burst latency 50ms"
-  echo -n "    iperf 검증 $bw: "; rsh $A_PRIV "iperf3 -c $B_PRIV -P 1 -t 8 -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'"; }
+  echo -n "    iperf check $bw: "; rsh $A_PRIV "iperf3 -c $B_PRIV -P 1 -t 8 -J 2>/dev/null | jq -r '.end.sum_sent.bits_per_second/1e9'"; }
 tc_clear(){ rsh $A_PRIV "IF=\$(ip -o -4 route show to default | awk '{print \$5}'); sudo tc qdisc del dev \$IF root 2>/dev/null || true"; }
 
-# ---- 1. 최적 설정의 종단 이득 (기준선과 정면 비교) ----
+# ---- 1. End-to-end gain of the best settings (head-to-head with the baseline) ----
 for variant in base best; do
   if [ "$variant" = base ]; then unset UCX_EXTRA KV_BUFFER_DEVICE NIXL_THREADS BLOCK
   else export UCX_EXTRA="${BEST_UCX_EXTRA:-}" KV_BUFFER_DEVICE="${BEST_KV_BUFFER_DEVICE:-}" NIXL_THREADS="${BEST_NIXL_THREADS:-}" BLOCK="${BEST_BLOCK:-}"; fi
-  log "D2-1 $variant 종단: ShareGPT 4·8, 4K 0.5, 16K 0.5, Azure"
+  log "D2-1 $variant end-to-end: ShareGPT 4·8, 4K 0.5, 16K 0.5, Azure"
   serve_p1 "$variant" || continue
   bench D "p1_$variant" N0 sharegpt 4; xfer
   bench D "p1_$variant" N0 sharegpt 8; xfer
@@ -45,9 +45,9 @@ for variant in base best; do
   TRACE_SEC_MULT=0.001 NUM_PROMPTS=600 bench D "p1_$variant" N0 azure_conv self; xfer
 done
 
-# ---- 2. 수정된 대역폭 축 (최적 설정으로, 4K 0.5 고정) ----
+# ---- 2. Corrected bandwidth axis (with the best settings, 4K 0.5 fixed) ----
 export UCX_EXTRA="${BEST_UCX_EXTRA:-}" KV_BUFFER_DEVICE="${BEST_KV_BUFFER_DEVICE:-}" NIXL_THREADS="${BEST_NIXL_THREADS:-}" BLOCK="${BEST_BLOCK:-}"
-log "D2-2 대역폭 축 재측정 (burst = rate × 10 ms, 송신 노드만)"
+log "D2-2 bandwidth axis re-measurement (burst = rate × 10 ms, sending node only)"
 serve_p1 bw
 for bw in 5gbit 3gbit 2gbit 1gbit; do
   tc_set $bw

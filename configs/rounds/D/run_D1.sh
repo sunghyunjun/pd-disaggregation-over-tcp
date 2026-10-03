@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# 세션 D-1 · KV 전송 처리량 끌어올리기 (P1 고정, 주 모델, prefix off)
-# 가설: 천장은 AWS 흐름 상한이 아니라 UCX GPU 스테이징 경로. 호스트 버퍼 전환이 최대 8배(llm-d CPU↔CPU 4.0 GB/s 근거).
-# 클라이언트 노드에서 실행. env: A_PRIV, B_PRIV
+# Round D-1 · raising KV transfer throughput (P1 fixed, main model, prefix off)
+# Hypothesis: the ceiling is the UCX GPU staging path, not the AWS per-flow cap. Switching to a host buffer could give up to 8x (based on llm-d CPU↔CPU 4.0 GB/s).
+# Run on the client node. env: A_PRIV, B_PRIV
 set -u
 export PATH=~/venv/bin:~/.local/bin:$PATH; cd ~/pd
 : "${A_PRIV:?}" "${B_PRIV:?}"
@@ -29,34 +29,34 @@ points(){ # $1 = config tag
   bench D "$1" N0 random 1    --random-input-len 4096 --random-output-len 512; xfer
 }
 
-log "D0 기준점 iperf 1/2/4/8 흐름"
+log "D0 baseline iperf 1/2/4/8 flows"
 rsh $A_PRIV "for P in 1 2 4 8; do iperf3 -c $B_PRIV -P \$P -t 8 -J | jq -r \"\\\"P=\$P \\(.end.sum_sent.bits_per_second/1e9) Gbps\\\"\"; done" | sed 's/^/    /'
-log "nixlbench 존재 확인"
+log "check whether nixlbench exists"
 rsh $A_PRIV "docker run --rm vllm/vllm-openai:v0.30.0 bash -lc 'which nixlbench 2>/dev/null; python -c \"import nixl,os;print(os.path.dirname(nixl.__file__))\" 2>/dev/null' " | sed 's/^/    /'
 
-log "D1a 기준선 (현재 설정: GPU 등록, 스레드 4, UCX 기본)"
+log "D1a baseline (current settings: GPU registration, 4 threads, UCX defaults)"
 unset UCX_EXTRA KV_BUFFER_DEVICE NIXL_THREADS BLOCK; serve_p1 a && points d1a
 
-log "D1b 호스트 버퍼 (kv_buffer_device=cpu)"
+log "D1b host buffer (kv_buffer_device=cpu)"
 unset UCX_EXTRA NIXL_THREADS BLOCK; export KV_BUFFER_DEVICE=cpu; serve_p1 b && points d1b
 
-log "D1c 스레드 16"
+log "D1c 16 threads"
 unset UCX_EXTRA KV_BUFFER_DEVICE BLOCK; export NIXL_THREADS=16; serve_p1 c && points d1c
 
-log "D1d UCX 세그먼트·버퍼·조각 크기"
+log "D1d UCX segment, buffer and fragment sizes"
 unset KV_BUFFER_DEVICE NIXL_THREADS BLOCK
 export UCX_EXTRA="UCX_TLS=tcp,cuda_copy,cuda_ipc UCX_NET_DEVICES=all UCX_TCP_TX_SEG_SIZE=256k UCX_TCP_RX_SEG_SIZE=256k UCX_TCP_MAX_IOV=16 UCX_TCP_MAX_POLL=-1 UCX_TCP_SNDBUF=8m UCX_TCP_RCVBUF=8m UCX_RNDV_FRAG_SIZE=host:4M,cuda:8M"
 serve_p1 d && points d1d
 
-log "D1e 블록 크기 32 (디스크립터 128 KiB)"
+log "D1e block size 32 (128 KiB descriptors)"
 unset UCX_EXTRA KV_BUFFER_DEVICE NIXL_THREADS; export BLOCK=32; serve_p1 e && points d1e
 
-log "D1f 조합 (D1d UCX 노브 + 스레드 16 + 블록 32)"
+log "D1f combination (D1d UCX knobs + 16 threads + block 32)"
 export NIXL_THREADS=16 BLOCK=32
 export UCX_EXTRA="UCX_TLS=tcp,cuda_copy,cuda_ipc UCX_NET_DEVICES=all UCX_TCP_TX_SEG_SIZE=256k UCX_TCP_RX_SEG_SIZE=256k UCX_TCP_MAX_IOV=16 UCX_TCP_MAX_POLL=-1 UCX_TCP_SNDBUF=8m UCX_TCP_RCVBUF=8m UCX_RNDV_FRAG_SIZE=host:4M,cuda:8M"
 unset KV_BUFFER_DEVICE; serve_p1 f && points d1f
 
-log "D1g ShareGPT 4 req/s 재확인 (기준선 설정 대비 최적 후보는 결과 보고 수동)"
+log "D1g ShareGPT 4 req/s re-check (the best candidate vs the baseline is picked by hand after seeing the results)"
 unset UCX_EXTRA KV_BUFFER_DEVICE NIXL_THREADS BLOCK; serve_p1 g && { bench D d1g_base N0 sharegpt 4; xfer; }
 
 pkill -f toy_proxy 2>/dev/null; for h in $A_PRIV $B_PRIV; do rsh $h "docker rm -f vllm >/dev/null 2>&1"; done

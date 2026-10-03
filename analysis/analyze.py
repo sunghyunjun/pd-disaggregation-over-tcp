@@ -59,7 +59,8 @@ def analyze(path, slos, tbt_stat):
     }
     for name, slo in slos.items():
         T, B = slo.get("ttft", float("inf")) / 1000, slo.get("tbt", float("inf")) / 1000
-        # 출력이 1토큰이라 간격이 없는 요청은 간격 조건을 만족한 것으로 본다(2026-09-30 수정, 심사 R2: 이전에는 실패로 셌다)
+        # A request whose output is a single token has no gaps and counts as meeting the gap condition
+        # (fixed 2026-09-30 after mock review R2; before that it was counted as a failure)
         ok = [ (not e) and (t <= T) and ((not l) or pq <= B) for t, pq, e, l in zip(ttfts, per_req_q, errors, itls) ]   # vLLM saves "" for success
         n_ok = sum(ok)
         row[f"attain_{name}"] = round(n_ok / max(1, len(ok)), 3)

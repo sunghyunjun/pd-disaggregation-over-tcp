@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# `vllm bench sweep serve`의 --serve-cmd 로 쓰는 전경(foreground) 서버 래퍼.
-# sweep은 이 프로세스를 프로세스 그룹째로 SIGKILL하므로 trap을 믿지 않는다. 컨테이너 정리는 시작 시점에 한다.
-# 인자: --host H --port P  (sweep이 /health 와 캐시 리셋 주소를 여기서 읽는다)
-# 환경: MODE=pd|solo, A_PRIV, B_PRIV(pd), MODEL, UCX_EXTRA, NIXL_THREADS, GPU_UTIL, MAXLEN, CHUNK, PREFIX
+# Foreground server wrapper used as the --serve-cmd of `vllm bench sweep serve`.
+# sweep SIGKILLs this process together with its process group, so no trap is relied on. Container cleanup happens at startup instead.
+# Args: --host H --port P  (sweep reads the /health and cache-reset address from these)
+# Env: MODE=pd|solo, A_PRIV, B_PRIV (pd), MODEL, UCX_EXTRA, NIXL_THREADS, GPU_UTIL, MAXLEN, CHUNK, PREFIX
 set -uo pipefail
 HOST=127.0.0.1; PORT=8000
 while [ $# -gt 0 ]; do case $1 in --host) HOST=$2; shift;; --port|-p) PORT=$2; shift;; esac; shift; done
@@ -18,15 +18,15 @@ COMMON="UCX_EXTRA='${UCX_EXTRA:-}' NIXL_THREADS='${NIXL_THREADS:-}' CHUNK=$CHUNK
 if [ "$MODE" = solo ]; then
   : "${A_PRIV:?}"
   rsh "$A_PRIV" "$COMMON PORT=8100 OWN_IP=$A_PRIV harness/serve.sh $MODEL" >/dev/null 2>&1 &
-  wait_health "$A_PRIV" 8100 || { echo "serve_pair: A 기동 실패"; exit 1; }
-  # 프록시 없이 단일 노드를 그대로 노출하려면 소켓 중계가 필요하다. 여기서는 단순 왕복 프록시를 쓴다.
+  wait_health "$A_PRIV" 8100 || { echo "serve_pair: A failed to start"; exit 1; }
+  # Exposing the single node directly without a proxy would need a socket relay. A simple pass-through proxy is used here instead.
   exec python3 harness/rr_proxy.py --port "$PORT" --upstreams "http://$A_PRIV:8100"
 else
   : "${A_PRIV:?}" "${B_PRIV:?}"
   rsh "$A_PRIV" "$COMMON PORT=8100 CONNECTOR=producer OWN_IP=$A_PRIV harness/serve.sh $MODEL" >/dev/null 2>&1 &
   rsh "$B_PRIV" "$COMMON PORT=8200 CONNECTOR=consumer OWN_IP=$B_PRIV harness/serve.sh $MODEL" >/dev/null 2>&1 &
-  wait_health "$A_PRIV" 8100 || { echo "serve_pair: prefill 기동 실패"; exit 1; }
-  wait_health "$B_PRIV" 8200 || { echo "serve_pair: decode 기동 실패"; exit 1; }
+  wait_health "$A_PRIV" 8100 || { echo "serve_pair: prefill failed to start"; exit 1; }
+  wait_health "$B_PRIV" 8200 || { echo "serve_pair: decode failed to start"; exit 1; }
   exec python3 vllm-src/tests/v1/kv_connector/nixl_integration/toy_proxy_server.py \
     --host 0.0.0.0 --port "$PORT" \
     --prefiller-hosts "$A_PRIV" --prefiller-ports 8100 \
