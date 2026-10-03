@@ -2,6 +2,8 @@
 
 Measurements and a calibrated model: chunked prefill vs. prefill–decode (P/D) disaggregation over TCP on single-GPU cloud instances, with stock vLLM (v0.30.0, NIXL/UCX) and Gemma 4 26B and 31B on AWS g6e, g7, and g7e 2xlarge.
 
+*한국어: [README.ko.md](README.ko.md)*
+
 Technical report: [doi:10.5281/zenodo.23085600](https://doi.org/10.5281/zenodo.23085600) · [PDF](paper/en/main.pdf) · [LaTeX](paper/en/) · Code and data: [doi:10.5281/zenodo.23085749](https://doi.org/10.5281/zenodo.23085749)
 
 ## TL;DR
@@ -36,14 +38,14 @@ Technical report: [doi:10.5281/zenodo.23085600](https://doi.org/10.5281/zenodo.2
 ```
 harness/    measurement harness and analysis: aggregate.py, safe_runs.py, slo_sensitivity.py,
             decisive_ci.py, boundary_model.py, make_figures_v4.py, proxies (rr_proxy.py, pd_proxy.py)
-configs/    vllm serve flag sets, per-round run scripts and runbooks
+configs/    vllm serve flag sets, per-round run scripts and runbooks (Korean originals, English in *.en.md)
 infra/      Terraform for GPU nodes, client node, placement group (set ALLOWED_SSH_CIDR before infra/up.sh)
 results/    all_runs.csv (455 runs), safe_runs.csv (audit labels), per_request.json.gz (per-request timings)
             raw per-run folders are in the release assets and on Zenodo, one tar.gz per measurement round
             (generated text is removed from every run in the public copies; output lengths and all timings are complete)
 paper/      en/ LaTeX source and PDF, ko/ Korean rendering, figures_v4/, reviews/ (four rounds of mock review)
-RESULTS.md  lab notebook (Korean), including the predictions committed before the last round
-PROTOCOL.md pre-registered protocol v1.7 (committed before the first run)
+RESULTS.md  lab notebook (Korean), including the predictions committed before the last round; RESULTS.en.md is an English guide
+PROTOCOL.md pre-registered protocol v1.7 (Korean, committed before the first run); PROTOCOL.en.md is a translation made afterwards
 ```
 
 ## Reproduce the report's numbers and figures
@@ -66,7 +68,7 @@ cd paper/en && tectonic main.tex                                               #
 
 One person, about $270 of cloud time, 455 runs over nine measurement rounds. The protocol was committed before the first run and the predictions for the last round before that round (Appendix D and E). Four rounds of AI-assisted mock peer review are in `paper/reviews/`; the first two prompted the two follow-up rounds, and the fourth reviewed the model in Section 6. An AI coding assistant (Claude) wrote the harness and analysis scripts, operated the infrastructure, ran the mock reviews, and drafted text and figures; the author designed the study, paid for and directed the runs, and checked the reported numbers against the raw data.
 
-Provenance of this public repository: the history is that of the private working repository with the AWS account ID and local paths replaced and the raw per-run folders removed (`git filter-repo`); `commit-map.txt` maps old to new hashes. A bundle of the original repository is kept by the author; its SHA-256 is in Appendix G of the report.
+Provenance of this public repository: the history is that of the private working repository, rewritten with `git filter-repo`. The AWS account ID, local paths, and a personal workspace name were replaced or removed; the raw per-run folders, an internal notes folder, an obsolete draft, and an internal to-do file were removed; tool-session trailers were stripped from commit messages; and the author e-mail was unified. `commit-map.txt` maps old to new hashes. A bundle of the original repository is kept by the author; its SHA-256 is in Appendix G of the report.
 
 ## License
 

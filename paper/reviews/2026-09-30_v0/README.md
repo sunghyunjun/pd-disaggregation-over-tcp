@@ -1,5 +1,9 @@
 # 영어 원고 v0 모의 심사 (2026-09-30)
 
+## English summary
+
+Round 1 of the AI-assisted mock peer review, on English draft v0 (private commit 778f505, 23 pages), the first English version of the Korean draft. Five reviewer agents with distinct roles (serving systems, measurement and statistics, networking and cloud, reproducibility, writing) reviewed it independently and a meta-reviewer agent consolidated them; the agents read the repository without modifying it, and the author re-ran the decisive numbers on the raw data. Scores: systems 2/5, methods 3/5, network 3/5, reproducibility 3/5, writing 3/5; meta verdict: major revision before release. The main findings: the replica baseline was handicapped by a chunk fixed at 2,560 tokens (the median longest gap sat 1.6 ms under the 50 ms limit), disaggregated runs showed global pauses of unknown cause, the claim "single-GPU instances have no RDMA" had to be narrowed to the 2xlarge sizes, and the transfer-volume model was wrong at 16K. The author's decision: record the review, then run one more measurement round (the chunk sweep, pause instrumentation, and connection-count checks that became round E8). Reviews and scripts are in Korean.
+
 대상: `paper/en/main.tex` v0 (커밋 778f505, 23쪽). 한국어 원고 284c432를 옮긴 첫 영어판이다.
 방식: 역할이 다른 심사 에이전트 5명이 각자 심사했고, 좌장 에이전트 1명이 종합했다. 심사 에이전트는 저장소를 읽기만 했다. 결정적인 수치는 저자 측(주 세션)이 원자료로 다시 돌려 확인했다.
 

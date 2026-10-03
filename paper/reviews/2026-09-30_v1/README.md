@@ -1,5 +1,9 @@
 # 영어 원고 v1 모의 심사 2차 (2026-09-30)
 
+## English summary
+
+Round 2, on English draft v1 (private commit cbac960, 22 pages), after measurement round E8 (47 runs) and the change of framing to "tune the chunk and disaggregation together". Same five roles plus a meta-reviewer; each reviewer first checked whether its round-1 points had been addressed. Scores (round 1 to round 2): systems 2 to 3, methods 3 to 4, network 3 to 3.5, reproducibility 3 to 3.5, writing 3 to 4; meta verdict: moderate revision, publishable without new measurements. Two new artifacts were found, both against the replicas: the replica proxy's default aiohttp connector capped concurrent connections at 100 (every TTFT failure of 1,024-token replicas at 4–5 requests/s per GPU arrived while 100 or more requests were in flight), and the 26B "4 against 3" verdict rested on an asymmetric number of repeats. Mechanism corrections: NIXL's split rule, the shared fifth connection, the 19–21 Gbps aggregate for 31B, the UCX seven-variable set being 5–10% slower than the segment sizes alone, and the one-token rule's effect on 31B. The meta-reviewer listed 15 required edits and an optional round E9 (first priority: 26B at a 512-token chunk), which the author ran with predictions committed in advance. Reviews and scripts are in Korean.
+
 대상: `paper/en/main.tex` v1(커밋 cbac960, 22쪽). 1차 심사(`../2026-09-30_v0/`) 뒤 세션 E8(47런)을 더해 "청크 프리필과 분리를 함께 조정한다"로 방향을 바꾼 판.
 방식: 1차와 같은 역할의 심사 에이전트 5명 + 좌장 1명. 각 심사자는 자기 1차 지적의 반영 여부를 먼저 대조했다. 저장소는 읽기만 했다.
 

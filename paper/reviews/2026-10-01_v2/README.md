@@ -1,5 +1,9 @@
 # 영어 원고 v2 모의 심사 3차 (2026-10-01)
 
+## English summary
+
+Round 3, on English draft v2 (private commit 298be40, 25 pages), after measurement round E9 (19 runs; predictions committed before the round). Same five roles plus a meta-reviewer. Scores (round 2 to round 3): systems 3 to 4, methods 4 to 4, network 3.5 to 4, reproducibility 3.5 to 3.5 (paper numbers 4.5, release packaging 1.5), writing 4 to 4; meta verdict: minor revision, no new measurements. The direction held: of 192 SLO cells against tuned chunks, none favored disaggregation and 85 could not be ranked; the headline was narrowed to "no SLO we could rank favored disaggregation". Required edits A1–A16 included limiting the 3× to 26B 4K, the TTFT comparison range (78–247 ms against 255–384 ms where both passed), disclosing that the 8,192-token prefill-chunk runs used only the UCX segment sizes, a borderline label for 31B 1P1D, a procedure that picks the largest chunk within the gap limit, withdrawing the "structural" decode-node claim for 26B, the NIXL split of 31B chat transfers, the receive-window mechanism of the seven-variable set, and the scoring of the E9 predictions (three held, one partial, one missed). The meta-reviewer also set the plan for preserving pre-registration evidence in the public repository (history kept with the account ID replaced, commit map, bundle hash). Reviews and scripts are in Korean.
+
 대상: `paper/en/main.tex` v2(커밋 298be40, 25쪽). 2차 심사(`../2026-09-30_v1/`) 뒤 세션 E9(19런, 예측을 측정 전에 커밋 8775497)을 더한 판.
 방식: 같은 역할의 심사 에이전트 5명 + 종합 심사자(메타리뷰어) 1명. 저장소는 읽기만 했다. 이 폴더에는 심사평과 분석 스크립트(.py)만 옮겼다(재생성 산출물·페이지 이미지는 제외).
 
