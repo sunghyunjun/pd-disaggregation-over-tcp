@@ -6,6 +6,8 @@ Measurements and a calibrated model: chunked prefill vs. prefill–decode (P/D) 
 
 Technical report: [doi:10.5281/zenodo.23085600](https://doi.org/10.5281/zenodo.23085600) · [PDF](paper/main.pdf) · [LaTeX](paper/en/) · Code and data: [doi:10.5281/zenodo.23085749](https://doi.org/10.5281/zenodo.23085749)
 
+Blog summary: [English](https://sunghyunjun.github.io/en/posts/2026-10-04-pd-disaggregation-over-tcp/) · [한국어](https://sunghyunjun.github.io/posts/2026-10-04-pd-disaggregation-over-tcp/)
+
 ## TL;DR
 
 - **Tune the chunk first.** A replica stalls when another request's prefill shares its scheduler step, and the chunk size bounds that stall: for 26B with 4K inputs the median longest gap fell from 48 ms at a 2,560-token chunk to 21 ms at 512.

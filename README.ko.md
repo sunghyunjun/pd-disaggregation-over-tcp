@@ -6,6 +6,8 @@
 
 테크니컬 리포트: [doi:10.5281/zenodo.23085600](https://doi.org/10.5281/zenodo.23085600) · [PDF(영어)](paper/main.pdf) · [한국어판(마크다운)](paper/ko/draft.md) · 코드와 데이터: [doi:10.5281/zenodo.23085749](https://doi.org/10.5281/zenodo.23085749)
 
+블로그 요약: [한국어](https://sunghyunjun.github.io/posts/2026-10-04-pd-disaggregation-over-tcp/) · [English](https://sunghyunjun.github.io/en/posts/2026-10-04-pd-disaggregation-over-tcp/)
+
 ## 세 줄 요약
 
 - **청크부터 조정하라.** 복제본은 다른 요청의 프리필이 같은 스케줄러 스텝에 끼면 멈추고, 청크 크기가 그 멈춤의 상한을 정한다. 26B 4K 입력에서 요청별 최대 간격의 중앙값은 청크 2,560토큰에서 48 ms, 512토큰에서 21 ms였다.
